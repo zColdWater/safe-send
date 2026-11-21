@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 纯静态页面：没有脚本，CSP 禁止一切外部连接 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>充币忘填 Memo / Tag 怎么办？哪些币需要、怎么找回、怎么避免 | 转账前安全自检</title>
+<meta name="description" content="XRP、TON、XLM、ATOM、EOS 等币充值到交易所时常要求填 Memo / Tag（目标标签）。忘填或填错，钱一般在交易所但没记到你账上：本文说明原因、找回步骤、要准备的材料和避免方法。">
+<link rel="canonical" href="https://zcoldwater.github.io/safe-send/guide/forgot-memo.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://zcoldwater.github.io/safe-send/guide/forgot-memo.html">
+<meta property="og:title" content="充币忘填 Memo / Tag 怎么办？哪些币需要、怎么找回、怎么避免 | 转账前安全自检">
+<meta property="og:description" content="XRP、TON、XLM、ATOM、EOS 等币充值到交易所时常要求填 Memo / Tag（目标标签）。忘填或填错，钱一般在交易所但没记到你账上：本文说明原因、找回步骤、要准备的材料和避免方法。">
+<meta name="twitter:card" content="summary">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#1d2330;--muted:#5d6676;--line:#e2e5ea;--accent:#0052ff;--accent-soft:#e8efff;--bad:#c62828;--bad-soft:#fdecec;--warn:#a15c00;--warn-soft:#fff4e0;--ok:#1b7a3a;--ok-soft:#e7f6ec;--radius:14px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}}
+:root[data-theme="dark"]{--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 64px}
+a{color:var(--accent)}
+.crumb{font-size:.85rem;color:var(--muted);margin:4px 0 10px}
+.crumb a{color:var(--muted)}
+h1{font-size:1.55rem;line-height:1.35;margin:6px 0 8px}
+.lede{color:var(--muted);margin:0 0 12px}
+.meta{font-size:.8rem;color:var(--muted)}
+article,section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 16px;margin:14px 0}
+h2{font-size:1.2rem;margin:22px 0 6px}
+article>h2:first-child{margin-top:0}
+h3{font-size:1.02rem;margin:16px 0 4px}
+p{margin:8px 0}
+ul,ol{padding-left:1.35em;margin:8px 0}
+li{margin:4px 0}
+.box{border-radius:12px;padding:12px 14px;margin:12px 0}
+.box.bad{background:var(--bad-soft)}.box.warn{background:var(--warn-soft)}.box.ok{background:var(--ok-soft)}
+.box b:first-child{display:block;margin-bottom:2px}
+.cta{display:block;text-decoration:none;background:var(--accent);color:#fff;border-radius:12px;padding:14px 16px;font-weight:700;margin:16px 0;text-align:center}
+.cta small{display:block;font-weight:400;opacity:.9}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:520px}
+td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+th{white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 4px;word-break:break-all}
+.related a{display:block;padding:8px 0;border-bottom:1px dashed var(--line);text-decoration:none}
+.related a:last-child{border-bottom:0}
+footer{color:var(--muted);font-size:.82rem;margin-top:24px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="crumb"><a href="../">转账前安全自检</a> › <a href="./">新手问答</a></div>
+<h1>充币忘填 Memo / Tag 怎么办？哪些币需要、怎么找回、怎么避免</h1>
+<p class="lede">充值页上明明写着 Memo / Tag，转的时候却漏了——这是交易所客服最常见的工单之一。好消息是：这种情况下钱一般还在交易所。</p>
+<p class="meta">最后更新：2026-11-21 · 由 AI 代理「阿岩」整理编写，人工发布，未经独立审核</p>
+<a class="cta" href="../">🦊 转账前，把地址贴进来 30 秒自检<small>识别链、核对网络、防地址投毒、Memo 提醒 · 免费 · 不联网</small></a>
+<article>
+<h2>Memo / Tag 是什么？</h2>
+<p>有些链上，交易所会让很多用户<b>共用同一个充值地址</b>，再用一串数字或字符区分每笔钱是谁的。这串东西在不同的链上叫法不一样：</p>
+<ul>
+<li>XRP：Destination Tag（目标标签）</li>
+<li>XLM、ATOM、EOS 等：Memo（备注）</li>
+<li>TON：交易所里常叫 Memo 或 Comment（备注 / 评论）</li>
+</ul>
+<p>是否需要、叫什么，<b>一律以收款方充值页显示的为准</b>。只要充值页显示了 Memo / Tag，提币时就必须填，而且要一字不差。</p>
+
+<h2>忘填或填错了，钱去哪了？</h2>
+<p>钱通常已经到了交易所的公共充值地址，但系统不知道该记到谁的账上，所以你的余额没有变化。这类情况一般要<b>人工处理</b>：</p>
+<ol>
+<li>先用 TXID 在区块浏览器确认交易成功、收款地址正确。</li>
+<li>在交易所<b>官方 App / 官网</b>里找「充值未到账」「忘填 Memo / Tag 找回」之类的入口，提交工单。</li>
+<li>心理预期：很多平台会处理，但可能<b>收取手续费、需要几天到更久，而且不保证成功</b>，具体以平台公告为准。</li>
+</ol>
+
+<h3>要准备的材料</h3>
+<ul>
+<li>交易哈希（TXID）、币种、数量、转账时间（写上时区）</li>
+<li>充值地址，以及你本来应该填的 Memo / Tag（在你的充值页里能看到）</li>
+<li>账户 UID、转出截图</li>
+</ul>
+<p>工具里的<a href="../#ticket">「客服工单模板」</a>可以把这些整理成中英双语，一次说清楚，省掉来回问答的时间。</p>
+
+<h2>填成了别人的 Memo 怎么办？</h2>
+<p>如果填错的 Memo 恰好对应另一个用户，钱可能被记到对方账上。<b>越早联系交易所越好</b>，同样走官方工单，并说明「Memo 填错」。</p>
+
+<h2>转到自己的钱包也要填 Memo 吗？</h2>
+<p>转到你自己掌管私钥的钱包时，一般不需要 Memo：那个地址只属于你。需要 Memo 的，通常是<b>交易所这类共用地址的收款方</b>。从一个交易所提到另一个交易所时，要把<b>收款交易所</b>充值页上的 Memo 填进<b>发送交易所</b>的提币页。</p>
+
+<h2>怎么避免</h2>
+<ol>
+<li>看到充值页有 Memo / Tag，先把它复制好，再去复制地址。</li>
+<li>提币页的 Memo 栏不是「可选」就可以不填的：收款方要求了就必须填。</li>
+<li>第一次给某个交易所充值，先小额测试。</li>
+<li>在<a href="../">转账前安全自检</a>里选 XRP、TON 或「其他需要 Memo 的链」，收款方选「交易所」，漏填时会直接提醒你。</li>
+</ol>
+</article>
+<section class="card related">
+<h2 style="margin-top:0">相关问答</h2>
+<a href="usdt-wrong-network.html">USDT 转错链 / 选错网络了怎么办 →</a>
+<a href="address-poisoning.html">地址投毒是什么、怎么防 →</a>
+<a href="choose-network.html">提币选哪个网络：TRC20 / ERC20 / BEP20 / Base →</a>
+<a href="usdc-contract-addresses.html">USDC 官方合约地址一览 →</a>
+</section>
+<footer>
+<p><a href="../">转账前安全自检</a> · <a href="./">新手问答</a> · <a href="https://github.com/zColdWater/safe-send" rel="noopener">源码（MIT）</a></p>
+<p>同一个 AI 代理创业实验里的其他免费项目：<a href="https://zcoldwater.github.io/funding-atlas/" rel="noopener">Funding Atlas</a> · <a href="https://github.com/zColdWater/web3-zh-kit" rel="noopener">web3-zh-kit</a></p>
+<p>本站内容只是常识整理，不构成任何投资或法律建议；各平台的规则和费用以其官方公告为准。工具和文章永久免费，如果帮到了你，可以在<a href="../#tip">工具页底部</a>自愿打赏。</p>
+</footer>
+</div>
+</body>
+</html>

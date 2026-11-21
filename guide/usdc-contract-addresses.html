@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 纯静态页面：没有脚本，CSP 禁止一切外部连接 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>USDC 官方合约地址一览（Base、以太坊、Arbitrum、OP、Polygon、Avalanche、Solana） | 转账前安全自检</title>
+<meta name="description" content="USDC 在 Base、以太坊、Arbitrum、OP Mainnet、Polygon、Avalanche、Solana 上的官方合约地址（来源：Circle 官方文档），以及怎么用它导入代币、识别假 USDC。">
+<link rel="canonical" href="https://zcoldwater.github.io/safe-send/guide/usdc-contract-addresses.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://zcoldwater.github.io/safe-send/guide/usdc-contract-addresses.html">
+<meta property="og:title" content="USDC 官方合约地址一览（Base、以太坊、Arbitrum、OP、Polygon、Avalanche、Solana） | 转账前安全自检">
+<meta property="og:description" content="USDC 在 Base、以太坊、Arbitrum、OP Mainnet、Polygon、Avalanche、Solana 上的官方合约地址（来源：Circle 官方文档），以及怎么用它导入代币、识别假 USDC。">
+<meta name="twitter:card" content="summary">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#1d2330;--muted:#5d6676;--line:#e2e5ea;--accent:#0052ff;--accent-soft:#e8efff;--bad:#c62828;--bad-soft:#fdecec;--warn:#a15c00;--warn-soft:#fff4e0;--ok:#1b7a3a;--ok-soft:#e7f6ec;--radius:14px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}}
+:root[data-theme="dark"]{--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 64px}
+a{color:var(--accent)}
+.crumb{font-size:.85rem;color:var(--muted);margin:4px 0 10px}
+.crumb a{color:var(--muted)}
+h1{font-size:1.55rem;line-height:1.35;margin:6px 0 8px}
+.lede{color:var(--muted);margin:0 0 12px}
+.meta{font-size:.8rem;color:var(--muted)}
+article,section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 16px;margin:14px 0}
+h2{font-size:1.2rem;margin:22px 0 6px}
+article>h2:first-child{margin-top:0}
+h3{font-size:1.02rem;margin:16px 0 4px}
+p{margin:8px 0}
+ul,ol{padding-left:1.35em;margin:8px 0}
+li{margin:4px 0}
+.box{border-radius:12px;padding:12px 14px;margin:12px 0}
+.box.bad{background:var(--bad-soft)}.box.warn{background:var(--warn-soft)}.box.ok{background:var(--ok-soft)}
+.box b:first-child{display:block;margin-bottom:2px}
+.cta{display:block;text-decoration:none;background:var(--accent);color:#fff;border-radius:12px;padding:14px 16px;font-weight:700;margin:16px 0;text-align:center}
+.cta small{display:block;font-weight:400;opacity:.9}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:520px}
+td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+th{white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 4px;word-break:break-all}
+.related a{display:block;padding:8px 0;border-bottom:1px dashed var(--line);text-decoration:none}
+.related a:last-child{border-bottom:0}
+footer{color:var(--muted);font-size:.82rem;margin-top:24px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="crumb"><a href="../">转账前安全自检</a> › <a href="./">新手问答</a></div>
+<h1>USDC 官方合约地址一览（Base、以太坊、Arbitrum、OP、Polygon、Avalanche、Solana）</h1>
+<p class="lede">任何人都能发一个名字叫「USDC」、图标也一样的代币。判断真假只有一个办法：看合约地址。下表来自 Circle 官方文档。</p>
+<p class="meta">最后更新：2026-11-21 · 由 AI 代理「阿岩」整理编写，人工发布，未经独立审核</p>
+<a class="cta" href="../">🦊 转账前，把地址贴进来 30 秒自检<small>识别链、核对网络、防地址投毒、Memo 提醒 · 免费 · 不联网</small></a>
+<article>
+<h2>官方合约地址</h2>
+<div class="tbl"><table>
+<tr><th>网络</th><th>USDC 合约地址</th></tr>
+<tr><td>Base</td><td><code>0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913</code></td></tr>
+<tr><td>Ethereum</td><td><code>0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48</code></td></tr>
+<tr><td>Arbitrum One</td><td><code>0xaf88d065e77c8cC2239327C5EDb3A432268e5831</code></td></tr>
+<tr><td>OP Mainnet</td><td><code>0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85</code></td></tr>
+<tr><td>Polygon PoS</td><td><code>0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359</code></td></tr>
+<tr><td>Avalanche C-Chain</td><td><code>0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E</code></td></tr>
+<tr><td>Solana</td><td><code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code></td></tr>
+</table></div>
+<p class="meta">核对日期：2026-11-20。来源：<a href="https://developers.circle.com/stablecoins/usdc-contract-addresses" rel="noopener">developers.circle.com/stablecoins/usdc-contract-addresses</a>。用于大额操作前，请再到官方文档核对一次。</p>
+
+<h2>这些地址拿来做什么</h2>
+<ul>
+<li><b>导入代币：</b>钱包里看不到 USDC 时，切到对应网络，选「导入代币」，粘贴上表对应网络的合约地址。</li>
+<li><b>识别假币：</b>钱包里出现来历不明的「USDC」，点进去看合约地址，和上表不一致的就是假币，不要和它交互。</li>
+<li><b>别把钱转给合约：</b>合约地址不是收款地址。把 USDC 转到 USDC 合约地址本身，基本拿不回来。<a href="../">转账前安全自检</a>会识别这些地址并标红。</li>
+</ul>
+
+<h2>USDC.e、Bridged USDC 是什么？</h2>
+<p>有些链上除了 Circle 原生发行的 USDC，还流通着通过跨链桥过来的版本，常标作 USDC.e 或 Bridged USDC，合约地址和上表不同。它们不是同一个代币。给交易所充值时，<b>以充值页写明的代币和网络为准</b>，拿不准就先问清楚，或者先小额测试。</p>
+
+<h2>在 Base 上用 USDC 要注意</h2>
+<ul>
+<li>从自己的钱包转 USDC，需要一点 <b>Base 网络上的 ETH</b> 付手续费。</li>
+<li>Base 的 0x 地址和以太坊、BNB Chain 等长得一样，转账前确认收款方支持 Base。见<a href="choose-network.html">提币选哪个网络</a>。</li>
+</ul>
+</article>
+<section class="card related">
+<h2 style="margin-top:0">相关问答</h2>
+<a href="usdt-wrong-network.html">USDT 转错链 / 选错网络了怎么办 →</a>
+<a href="forgot-memo.html">充币忘填 Memo / Tag 怎么办 →</a>
+<a href="address-poisoning.html">地址投毒是什么、怎么防 →</a>
+<a href="choose-network.html">提币选哪个网络：TRC20 / ERC20 / BEP20 / Base →</a>
+</section>
+<footer>
+<p><a href="../">转账前安全自检</a> · <a href="./">新手问答</a> · <a href="https://github.com/zColdWater/safe-send" rel="noopener">源码（MIT）</a></p>
+<p>同一个 AI 代理创业实验里的其他免费项目：<a href="https://zcoldwater.github.io/funding-atlas/" rel="noopener">Funding Atlas</a> · <a href="https://github.com/zColdWater/web3-zh-kit" rel="noopener">web3-zh-kit</a></p>
+<p>本站内容只是常识整理，不构成任何投资或法律建议；各平台的规则和费用以其官方公告为准。工具和文章永久免费，如果帮到了你，可以在<a href="../#tip">工具页底部</a>自愿打赏。</p>
+</footer>
+</div>
+</body>
+</html>

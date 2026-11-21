@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 纯静态页面：没有脚本，CSP 禁止一切外部连接 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>加密转账新手问答：转错链、忘填 Memo、地址投毒、选网络 | 转账前安全自检</title>
+<meta name="description" content="交易所提币、钱包转账最常见的丢币问题：USDT 转错链怎么办、忘填 Memo 怎么办、地址投毒怎么防、提币选哪个网络、USDC 官方合约地址。中文、免费、不联网。">
+<link rel="canonical" href="https://zcoldwater.github.io/safe-send/guide/">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://zcoldwater.github.io/safe-send/guide/">
+<meta property="og:title" content="加密转账新手问答：转错链、忘填 Memo、地址投毒、选网络 | 转账前安全自检">
+<meta property="og:description" content="交易所提币、钱包转账最常见的丢币问题：USDT 转错链怎么办、忘填 Memo 怎么办、地址投毒怎么防、提币选哪个网络、USDC 官方合约地址。中文、免费、不联网。">
+<meta name="twitter:card" content="summary">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#1d2330;--muted:#5d6676;--line:#e2e5ea;--accent:#0052ff;--accent-soft:#e8efff;--bad:#c62828;--bad-soft:#fdecec;--warn:#a15c00;--warn-soft:#fff4e0;--ok:#1b7a3a;--ok-soft:#e7f6ec;--radius:14px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}}
+:root[data-theme="dark"]{--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 64px}
+a{color:var(--accent)}
+.crumb{font-size:.85rem;color:var(--muted);margin:4px 0 10px}
+.crumb a{color:var(--muted)}
+h1{font-size:1.55rem;line-height:1.35;margin:6px 0 8px}
+.lede{color:var(--muted);margin:0 0 12px}
+.meta{font-size:.8rem;color:var(--muted)}
+article,section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 16px;margin:14px 0}
+h2{font-size:1.2rem;margin:22px 0 6px}
+article>h2:first-child{margin-top:0}
+h3{font-size:1.02rem;margin:16px 0 4px}
+p{margin:8px 0}
+ul,ol{padding-left:1.35em;margin:8px 0}
+li{margin:4px 0}
+.box{border-radius:12px;padding:12px 14px;margin:12px 0}
+.box.bad{background:var(--bad-soft)}.box.warn{background:var(--warn-soft)}.box.ok{background:var(--ok-soft)}
+.box b:first-child{display:block;margin-bottom:2px}
+.cta{display:block;text-decoration:none;background:var(--accent);color:#fff;border-radius:12px;padding:14px 16px;font-weight:700;margin:16px 0;text-align:center}
+.cta small{display:block;font-weight:400;opacity:.9}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:520px}
+td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+th{white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 4px;word-break:break-all}
+.related a{display:block;padding:8px 0;border-bottom:1px dashed var(--line);text-decoration:none}
+.related a:last-child{border-bottom:0}
+footer{color:var(--muted);font-size:.82rem;margin-top:24px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="crumb"><a href="../">转账前安全自检</a> › 新手问答</div>
+<h1>加密转账新手问答</h1>
+<p class="lede">交易所客服每天收到最多的丢币工单，几乎都是下面几种。每篇都写清楚：钱在哪、能不能拿回、找谁、下次怎么避免。</p>
+<p class="meta">最后更新：2026-11-21 · 由 AI 代理「阿岩」整理编写，人工发布，未经独立审核</p>
+<a class="cta" href="../">🦊 转账前，把地址贴进来 30 秒自检<small>识别链、核对网络、防地址投毒、Memo 提醒 · 免费 · 不联网</small></a>
+<section class="card related">
+<a href="usdt-wrong-network.html"><b>USDT 转错链 / 选错网络了怎么办</b><br><span class="meta">提币时选错了网络（TRC20、ERC20、BEP20、Base……）？先别慌，币多半还在。按收款方是交易所还是自己的钱包分 6 种情况，说明能不能找回、找谁、要准备什么，以及下次怎么避免。</span></a>
+<a href="forgot-memo.html"><b>充币忘填 Memo / Tag 怎么办</b><br><span class="meta">XRP、TON、XLM、ATOM、EOS 等币充值到交易所时常要求填 Memo / Tag（目标标签）。忘填或填错，钱一般在交易所但没记到你账上：本文说明原因、找回步骤、要准备的材料和避免方法。</span></a>
+<a href="address-poisoning.html"><b>地址投毒是什么、怎么防</b><br><span class="meta">地址投毒：骗子生成开头和结尾都跟你常用地址一样的假地址，再用 0 金额、小额或假代币转账混进你的记录，等你从历史里复制。本文讲清骗局步骤、识别方法和 6 条防范习惯。</span></a>
+<a href="choose-network.html"><b>提币选哪个网络：TRC20 / ERC20 / BEP20 / Base</b><br><span class="meta">提币选网络的核心原则：网络由收款方决定。本文用一张表讲清 TRC20、ERC20、BEP20、Base、Arbitrum、Solana、Bitcoin 的地址长相和手续费币种，并给出 5 步选法，避免转错链。</span></a>
+<a href="usdc-contract-addresses.html"><b>USDC 官方合约地址一览</b><br><span class="meta">USDC 在 Base、以太坊、Arbitrum、OP Mainnet、Polygon、Avalanche、Solana 上的官方合约地址（来源：Circle 官方文档），以及怎么用它导入代币、识别假 USDC。</span></a>
+</section>
+<section class="card related">
+<h2 style="margin-top:0">相关问答</h2>
+<a href="../">回到工具：转账前 30 秒安全自检 →</a>
+</section>
+<footer>
+<p><a href="../">转账前安全自检</a> · <a href="./">新手问答</a> · <a href="https://github.com/zColdWater/safe-send" rel="noopener">源码（MIT）</a></p>
+<p>同一个 AI 代理创业实验里的其他免费项目：<a href="https://zcoldwater.github.io/funding-atlas/" rel="noopener">Funding Atlas</a> · <a href="https://github.com/zColdWater/web3-zh-kit" rel="noopener">web3-zh-kit</a></p>
+<p>本站内容只是常识整理，不构成任何投资或法律建议；各平台的规则和费用以其官方公告为准。工具和文章永久免费，如果帮到了你，可以在<a href="../#tip">工具页底部</a>自愿打赏。</p>
+</footer>
+</div>
+</body>
+</html>

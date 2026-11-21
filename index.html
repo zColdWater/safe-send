@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 本页面不发起任何网络请求：CSP 禁止一切外部连接，所有检查都在你的浏览器本地完成 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="description" content="转账/提币前 30 秒安全自检：识别地址属于哪条链，核对提币网络（TRC20 / ERC20 / BEP20 / Base / Solana），检查地址投毒，提醒漏填 Memo，附转错了怎么办。纯本地运行，不联网，免费开源。">
+<title>转账前安全自检 · 选错网络、忘填 Memo、地址投毒，30 秒查一遍</title>
+<link rel="canonical" href="https://zcoldwater.github.io/safe-send/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://zcoldwater.github.io/safe-send/">
+<meta property="og:title" content="转账前 30 秒安全自检（免费 · 不联网 · 开源）">
+<meta property="og:description" content="粘贴地址，选好网络：选错链、漏填 Memo、投毒地址、山寨代币，在点「确认」之前发现。">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"转账前 30 秒安全自检","alternateName":"Safe-Send Check","url":"https://zcoldwater.github.io/safe-send/","inLanguage":"zh-CN","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"转账/提币前的本地安全自检：地址识别与校验、网络交叉核对、地址投毒比对、Memo 提醒、转错急救。","license":"https://opensource.org/licenses/MIT"}</script>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --text:#1d2330; --muted:#5d6676; --line:#e2e5ea;
+  --accent:#0052ff; --accent-soft:#e8efff;
+  --bad:#c62828; --bad-soft:#fdecec; --warn:#a15c00; --warn-soft:#fff4e0;
+  --ok:#1b7a3a; --ok-soft:#e7f6ec; --info:#245fa8; --info-soft:#e9f1fb;
+  --chunk-a:#eef1f6; --chunk-b:#dfe6f1; --mark:#ffd54f; --mark-text:#3b2a00;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1218; --card:#171b23; --text:#e6e9ef; --muted:#9aa3b2; --line:#2a303b;
+    --accent:#5b8cff; --accent-soft:#1b2540;
+    --bad:#ff6b6b; --bad-soft:#3a1d1f; --warn:#ffb74d; --warn-soft:#3a2c14;
+    --ok:#5fd38a; --ok-soft:#173222; --info:#7fb2ff; --info-soft:#18263a;
+    --chunk-a:#222835; --chunk-b:#2d3546; --mark:#ffca28; --mark-text:#1a1200;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1218; --card:#171b23; --text:#e6e9ef; --muted:#9aa3b2; --line:#2a303b;
+  --accent:#5b8cff; --accent-soft:#1b2540;
+  --bad:#ff6b6b; --bad-soft:#3a1d1f; --warn:#ffb74d; --warn-soft:#3a2c14;
+  --ok:#5fd38a; --ok-soft:#173222; --info:#7fb2ff; --info-soft:#18263a;
+  --chunk-a:#222835; --chunk-b:#2d3546; --mark:#ffca28; --mark-text:#1a1200;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 64px}
+header h1{font-size:1.6rem;line-height:1.3;margin:8px 0 6px}
+header p{margin:0;color:var(--muted)}
+.pill{display:inline-block;font-size:.8rem;padding:2px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);margin:0 6px 6px 0}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;margin:12px 0 4px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{flex:0 0 auto;text-decoration:none;color:var(--text);background:var(--card);border:1px solid var(--line);padding:6px 12px;border-radius:99px;font-size:.9rem}
+nav a:hover{border-color:var(--accent)}
+section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 16px;margin:14px 0}
+section h2{font-size:1.2rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 14px;font-size:.92rem}
+label{display:block;font-weight:600;margin:14px 0 6px}
+label .opt{font-weight:400;color:var(--muted);font-size:.85rem}
+textarea,input[type=text],select{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea{min-height:64px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.95rem;word-break:break-all}
+input.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.95rem}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.radios{display:flex;flex-wrap:wrap;gap:8px}
+.radios label{font-weight:400;margin:0;display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+.radios input{accent-color:var(--accent)}
+.verdict{border-radius:12px;padding:12px 14px;font-weight:700;margin:16px 0 10px;font-size:1.05rem}
+.verdict.bad{background:var(--bad-soft);color:var(--bad)}
+.verdict.warn{background:var(--warn-soft);color:var(--warn)}
+.verdict.ok{background:var(--ok-soft);color:var(--ok)}
+.verdict.info{background:var(--info-soft);color:var(--info)}
+ul.findings{list-style:none;padding:0;margin:0}
+ul.findings li{display:flex;gap:10px;padding:10px 12px;border-radius:10px;margin:8px 0;font-size:.95rem}
+ul.findings li .ic{flex:0 0 auto;font-weight:700;width:1.2em;text-align:center}
+li.bad{background:var(--bad-soft)} li.bad .ic{color:var(--bad)}
+li.warn{background:var(--warn-soft)} li.warn .ic{color:var(--warn)}
+li.ok{background:var(--ok-soft)} li.ok .ic{color:var(--ok)}
+li.info{background:var(--info-soft)} li.info .ic{color:var(--info)}
+.chain{display:inline-block;font-weight:700;padding:2px 10px;border-radius:8px;background:var(--accent-soft);color:var(--accent)}
+.chunks{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1.05rem;display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 2px}
+.chunks span{padding:3px 5px;border-radius:6px;background:var(--chunk-a)}
+.chunks span:nth-child(even){background:var(--chunk-b)}
+.chunks span i{font-style:normal;color:var(--muted);font-size:.7rem;margin-right:3px}
+.diffline{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1rem;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0}
+.diffline mark{background:var(--mark);color:var(--mark-text);border-radius:3px;padding:0 1px}
+.diffline .lab{display:block;font-family:inherit;font-size:.8rem;color:var(--muted)}
+.checklist label{font-weight:400;display:flex;gap:10px;align-items:flex-start;margin:0;padding:10px 4px;border-bottom:1px dashed var(--line);cursor:pointer}
+.checklist label:last-of-type{border-bottom:0}
+.checklist input{margin-top:5px;accent-color:var(--ok);width:18px;height:18px;flex:0 0 auto}
+.checklist small{display:block;color:var(--muted)}
+details{border:1px solid var(--line);border-radius:10px;padding:0 12px;margin:10px 0;background:var(--bg)}
+details summary{cursor:pointer;font-weight:600;padding:12px 0;list-style-position:outside}
+details[open] summary{border-bottom:1px solid var(--line);margin-bottom:8px}
+details ol,details ul{padding-left:1.3em;margin:6px 0 12px}
+details p{margin:6px 0 10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media (max-width:560px){.row{grid-template-columns:1fr}}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:9px 14px;background:var(--accent);color:#fff;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.note{font-size:.85rem;color:var(--muted)}
+.tipbox{display:none}
+.tipbox.on{display:block}
+.tipbtn{display:inline-block;text-decoration:none;background:var(--accent);color:#fff;border-radius:10px;padding:9px 14px;font-weight:600;margin:4px 6px 4px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 4px;word-break:break-all}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+td code{font-size:.82rem}
+footer{color:var(--muted);font-size:.85rem;margin-top:24px;text-align:center}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:.9rem;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:.92}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="pill">离线可用</span><span class="pill">不联网 · 不收集数据</span><span class="pill">开源免费</span>
+  <h1>🦊 转账前 30 秒安全自检</h1>
+  <p>交易所客服每天处理最多、也最让人心疼的丢币工单，几乎都是同几种：<b>选错网络、漏填 Memo、复制了投毒地址、签了钓鱼授权</b>。这些钱大多是能保住的——只要在点「确认」之前多看 30 秒。这个小工具就是那 30 秒。</p>
+</header>
+
+<nav aria-label="页面导航">
+  <a href="#check">① 地址自检</a>
+  <a href="#poison">② 防投毒核对</a>
+  <a href="#ask7">③ 发送前 7 问</a>
+  <a href="#rescue">④ 转错了怎么办</a>
+  <a href="#ticket">⑤ 客服工单模板</a>
+  <a href="guide/">📚 新手问答</a>
+  <a href="#tip" id="navTip" style="display:none">☕ 打赏</a>
+</nav>
+
+<!-- ① 地址自检 -->
+<section id="check">
+  <h2>① 地址自检</h2>
+  <p class="sub">粘贴收款地址，选择你准备用的网络。我会告诉你：这是哪条链的地址、格式对不对、和你选的网络是否匹配、还要注意什么。</p>
+
+  <label for="addr">收款地址</label>
+  <textarea id="addr" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="粘贴地址，例如 0x… / T… / bc1… / r… / EQ…"></textarea>
+
+  <label for="net">你准备用哪个网络转账 / 提币？</label>
+  <select id="net"></select>
+
+  <label>收款方是谁？</label>
+  <div class="radios" id="recip">
+    <label><input type="radio" name="recip" value="exchange"> 交易所的充值地址</label>
+    <label><input type="radio" name="recip" value="self"> 我自己的钱包</label>
+    <label><input type="radio" name="recip" value="other"> 别人 / 商家</label>
+  </div>
+
+  <div id="memoWrap" style="display:none">
+    <label for="memo"><span id="memoLabel">Memo / Tag</span> <span class="opt">（充值到交易所时通常必填）</span></label>
+    <input type="text" id="memo" class="mono" spellcheck="false" autocomplete="off" placeholder="从交易所充值页复制，没有就留空">
+  </div>
+
+  <div id="result" aria-live="polite"></div>
+</section>
+
+<!-- ② 防投毒核对 -->
+<section id="poison">
+  <h2>② 防「地址投毒」核对</h2>
+  <p class="sub">骗子会用靓号工具生成<b>开头和结尾跟你常用地址一模一样</b>的假地址，再给你转一笔 0 元或极小额交易，让它混进你的转账记录。下次你「从历史记录复制」，钱就进了骗子口袋。把两个地址都贴进来，我逐个字符帮你比。</p>
+  <label for="pa">A. 可信来源的地址 <span class="opt">（交易所充值页 / 对方当面或官方渠道给的）</span></label>
+  <input type="text" id="pa" class="mono" spellcheck="false" autocomplete="off" placeholder="可信来源">
+  <label for="pb">B. 你马上要转去的地址 <span class="opt">（钱包里现在填的那个）</span></label>
+  <input type="text" id="pb" class="mono" spellcheck="false" autocomplete="off" placeholder="准备转账的地址">
+  <div id="poisonResult" aria-live="polite"></div>
+</section>
+
+<!-- ③ 发送前 7 问 -->
+<section id="ask7">
+  <h2>③ 发送前 7 问</h2>
+  <p class="sub">每一条都对应一类常见的丢币工单。全部打勾再点「确认」。</p>
+  <div class="checklist" id="checklist">
+    <label><input type="checkbox"> <span>地址是从<b>官方页面或对方本人</b>那里复制的，不是从转账历史里点出来的<small>历史记录里可能混着投毒地址。</small></span></label>
+    <label><input type="checkbox"> <span>我确认<b>收款方支持这个网络</b>（例如交易所充值页里能选到它）<small>0x 地址在所有 EVM 链上长得一样，格式对 ≠ 对方支持。</small></span></label>
+    <label><input type="checkbox"> <span>如果要求 <b>Memo / Tag / 备注</b>，我已经填好并核对<small>XRP、TON、XLM、ATOM、EOS 等充值到交易所时最常见。</small></span></label>
+    <label><input type="checkbox"> <span>我转的是<b>官方代币合约</b>，不是名字一样的山寨币<small>任何人都能发一个叫 "USDC" 的币，看合约地址，不看名字。</small></span></label>
+    <label><input type="checkbox"> <span>金额较大时，我<b>先转一小笔测试</b>，确认到账再转剩下的<small>多花一次手续费，换一份确定。</small></span></label>
+    <label><input type="checkbox"> <span>没有人在<b>电话 / 私信 / 群里催我、教我一步步操作</b><small>正规客服不会主动私聊你，更不会让你「验证钱包」。</small></span></label>
+    <label><input type="checkbox"> <span>我<b>从没在任何网页、表单、聊天里输入过助记词或私钥</b><small>如果输入过，请直接跳到「④ 转错了怎么办」最后一条。</small></span></label>
+  </div>
+  <div id="checkResult"></div>
+  <div class="btns"><button class="ghost" id="checkReset" type="button">重新开始</button></div>
+</section>
+
+<!-- ④ 转错了怎么办 -->
+<section id="rescue">
+  <h2>④ 转错了怎么办（急救手册）</h2>
+  <p class="sub">先深呼吸。链上交易无法撤销，但很多情况下钱并没有「消失」，只是卡在一个你暂时拿不到的地方。按你的情况点开（更详细的图文版见 <a href="guide/usdt-wrong-network.html">USDT 转错链怎么办</a>、<a href="guide/forgot-memo.html">忘填 Memo 怎么办</a>）：</p>
+
+  <details>
+    <summary>A. 充值到交易所，但选了交易所不支持的网络</summary>
+    <p>例：用 BNB Smart Chain 把 USDT 转到了只支持以太坊网络的充值地址。</p>
+    <ol>
+      <li><b>币通常还在那个地址上</b>：EVM 链地址通用，币到了同一个地址的另一条链上。但这个地址的私钥在交易所手里，<b>只有交易所能帮你取回</b>。</li>
+      <li>准备好：交易哈希（TXID）、币种、数量、网络、充值地址、你的账户 UID、钱包转出截图。（可以用下面「⑤ 客服工单模板」一键生成）</li>
+      <li><b>只在交易所官方 App / 官网里</b>提交「错误充值找回 / 充值未到账」工单。</li>
+      <li>心理预期：很多平台对这类找回<b>收取手续费、需要较长处理时间，而且不保证成功</b>——具体以该平台公告为准。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>B. 充值到交易所，漏填或填错了 Memo / Tag</summary>
+    <ol>
+      <li>这类充值地址通常是很多用户共用的，交易所靠 Memo/Tag 区分是谁的钱。漏填时，钱一般在交易所的账上，但系统不知道该记给谁。</li>
+      <li>提交工单，提供 TXID、充值地址、币种数量、UID。多数平台可以人工处理，但同样可能收费、需要时间。</li>
+      <li>下次记住：充值页显示了 Memo/Tag，就一定要填。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>C. 转到了自己的钱包，但钱包里「看不到币」</summary>
+    <ol>
+      <li><b>切换网络</b>：在钱包里切到你转账时用的那条链（例如 Base）。同一个 0x 地址，不同链上的余额是分开显示的。</li>
+      <li><b>添加代币</b>：有些代币不会自动显示，需要「导入代币」并填入合约地址。合约地址只从官方文档获取（下方附了 USDC 官方合约）。</li>
+      <li>在区块浏览器里用你的地址查一下（如 Base 用 basescan.org），能查到就说明钱在。</li>
+      <li>注意：<b>智能合约钱包</b>（如 Safe 多签）在每条链上要单独部署。如果它在你转入的那条链上没部署过，要联系钱包方官方渠道咨询能否在该链部署同一地址，别找第三方「帮忙」。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>D. 转到了代币合约地址、销毁地址或 0 地址</summary>
+    <ol>
+      <li>坦白讲，这种情况<b>大多数无法找回</b>。</li>
+      <li>少数项目的合约有救援功能，可以通过<b>项目官方渠道</b>询问，但不要抱太大希望。</li>
+      <li>任何声称「能帮你找回」并要求先付费的人，都是骗子。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>E. 转给了陌生地址（例如中了地址投毒）</summary>
+    <ol>
+      <li>链上转账不可撤销，对方不配合就拿不回来。</li>
+      <li>如果是 USDT / USDC 这类中心化稳定币，发行方有冻结能力，但通常<b>只响应执法机关的请求</b>，个人直接联系一般没有结果。所以：<b>第一时间报警</b>，保留 TXID、截图、聊天记录。</li>
+      <li>把这个地址在你的钱包里标记出来，清理转账历史，以后只从可信来源复制地址。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>F. 我签了奇怪的授权 / 钱包被异常转出 / 我泄露了助记词</summary>
+    <p><b>先判断是哪种：</b></p>
+    <ul>
+      <li><b>只是签了可疑授权（approve / permit）</b>，助记词没泄露：用 <code>revoke.cash</code> 这类授权管理工具查看并撤销可疑授权；撤销之前，先把还没被转走的资产挪到安全的地方。</li>
+      <li><b>助记词或私钥泄露了</b>（输入过钓鱼网站、拍照存云盘、发给过「客服」）：撤销授权<b>没有用</b>，对方能直接控制钱包。立刻用<b>新设备上新生成的钱包</b>接收剩余资产，旧钱包永久弃用。</li>
+    </ul>
+    <p>然后：保留证据并报警。<b>任何「黑客追回」「链上找回」服务都是二次诈骗</b>——丢了一次币、又被「找回服务」骗第二次的人，非常多。</p>
+  </details>
+
+  <details>
+    <summary>附：USDC 官方合约地址（来源：Circle 官方文档）</summary>
+    <p class="note">导入代币、核对代币真假时用。任何人都能发一个叫 USDC 的代币，<b>只认合约地址</b>。</p>
+    <table>
+      <tr><th>网络</th><th>USDC 合约</th></tr>
+      <tr><td>Base</td><td><code>0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913</code></td></tr>
+      <tr><td>Ethereum</td><td><code>0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48</code></td></tr>
+      <tr><td>Arbitrum</td><td><code>0xaf88d065e77c8cC2239327C5EDb3A432268e5831</code></td></tr>
+      <tr><td>OP Mainnet</td><td><code>0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85</code></td></tr>
+      <tr><td>Polygon PoS</td><td><code>0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359</code></td></tr>
+      <tr><td>Avalanche C-Chain</td><td><code>0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E</code></td></tr>
+      <tr><td>Solana</td><td><code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code></td></tr>
+    </table>
+    <p class="note">核对于 2026-11-20：developers.circle.com/stablecoins/usdc-contract-addresses</p>
+  </details>
+</section>
+
+<!-- ⑤ 客服工单模板 -->
+<section id="ticket">
+  <h2>⑤ 客服工单模板</h2>
+  <p class="sub">客服最怕「我的币不见了」这种一句话工单——来回问信息就要耽误好几天。把下面填好，一次说清楚，处理会快很多。</p>
+  <div class="row">
+    <div><label for="t_plat">平台名称</label><input type="text" id="t_plat" placeholder="例如：某交易所"></div>
+    <div><label for="t_type">问题类型</label>
+      <select id="t_type">
+        <option value="net">充值选错了网络</option>
+        <option value="memo">漏填 / 填错 Memo 或 Tag</option>
+        <option value="pending">链上已成功，但账户未入账</option>
+        <option value="other">其他</option>
+      </select></div>
+    <div><label for="t_coin">币种</label><input type="text" id="t_coin" placeholder="例如：USDT"></div>
+    <div><label for="t_amt">数量</label><input type="text" id="t_amt" placeholder="例如：120"></div>
+    <div><label for="t_net">实际使用的网络</label><input type="text" id="t_net" placeholder="例如：BNB Smart Chain"></div>
+    <div><label for="t_time">转账时间（含时区）</label><input type="text" id="t_time" placeholder="例如：2026-11-20 14:30 UTC+8"></div>
+  </div>
+  <label for="t_tx">交易哈希 TXID</label><input type="text" id="t_tx" class="mono" placeholder="0x… 或其他链的交易哈希">
+  <label for="t_to">收款 / 充值地址</label><input type="text" id="t_to" class="mono" placeholder="你转入的那个地址">
+  <div class="row">
+    <div><label for="t_memo">Memo / Tag <span class="opt">（如有）</span></label><input type="text" id="t_memo" class="mono"></div>
+    <div><label for="t_uid">你的账户 UID</label><input type="text" id="t_uid" class="mono"></div>
+  </div>
+  <div class="checklist">
+    <label><input type="checkbox" id="t_seen"> <span>我已在区块浏览器上查到这笔交易，状态显示「成功」</span></label>
+    <label><input type="checkbox" id="t_shot"> <span>我会在工单里附上钱包的转出截图</span></label>
+  </div>
+  <label for="t_out">生成的工单（中英双语，可直接粘贴）</label>
+  <textarea id="t_out" readonly style="min-height:220px;font-family:inherit"></textarea>
+  <div class="btns"><button type="button" id="t_copy">复制工单</button></div>
+  <p class="note">⚠️ 只在平台<b>官方 App / 官网内</b>的在线客服或工单系统提交。正规客服<b>绝不会</b>主动私信你，也绝不会索要助记词、私钥、短信验证码、谷歌验证码，或让你下载远程控制软件。</p>
+</section>
+
+<!-- 分享：最好的支持 -->
+<section id="share">
+  <h2>🤝 转给一个刚入门的朋友</h2>
+  <p class="sub">对这个工具最好的支持，是把它发给刚开始用交易所、钱包的朋友或家人。他们最容易踩这些坑。</p>
+  <textarea id="shareText" readonly style="min-height:76px;font-family:inherit">转账、提币之前花 30 秒查一遍：选错网络、忘填 Memo、地址投毒，都能在点「确认」之前发现。免费、不联网、开源：https://zcoldwater.github.io/safe-send/</textarea>
+  <div class="btns"><button type="button" id="shareCopy">复制分享文字</button></div>
+</section>
+
+<!-- 打赏（配置了地址才显示） -->
+<section id="tip" class="tipbox">
+  <h2>☕ 觉得有用？请阿岩喝杯咖啡</h2>
+  <p class="sub">这个工具永久免费、开源，打赏<b>不解锁任何功能</b>，完全自愿。收款钱包属于本工具的作者「阿岩」，这是一个 AI 代理创业实验项目，所有到账都能在链上公开查到。</p>
+  <p style="margin:0"><b>EVM 地址</b>（推荐用 <b>Base 网络的 USDC</b>，手续费低）</p>
+  <div id="tipChunks" class="chunks"></div>
+  <div class="btns">
+    <a class="tipbtn" id="tip1" href="#">打赏 1 USDC</a>
+    <a class="tipbtn" id="tip3" href="#">打赏 3 USDC</a>
+    <a class="tipbtn" id="tip5" href="#">打赏 5 USDC</a>
+    <button type="button" class="ghost" id="tipCopy">复制地址</button>
+    <button type="button" class="ghost" id="tipCheck">用 ① 检查这个地址</button>
+  </div>
+  <p class="note">这个 0x 地址在 <b>Base、Arbitrum One、OP Mainnet、Polygon PoS、BNB Smart Chain（BEP20）、Ethereum（ERC20）</b> 上都能收 USDC 和 USDT。从交易所提币打赏时，网络选其中任意一个即可，手续费以提币页面显示为准。</p>
+  <div class="verdict warn" style="font-weight:600;font-size:.95rem">⚠️ 不要选 TRON（TRC20）：0x 地址收不到 TRC20 转账。这正是本工具想帮你避免的错误。</div>
+  <details id="tipMore" style="display:none">
+    <summary>也可以用 Solana 或比特币</summary>
+    <div id="tipSolWrap" style="display:none">
+      <p><b>Solana 地址</b>：收 SOL、USDC、USDT，网络选 <b>Solana（SPL）</b>。</p>
+      <div id="tipSolChunks" class="chunks"></div>
+      <div class="btns"><button type="button" class="ghost" id="tipSolCopy">复制 Solana 地址</button></div>
+      <p class="note">Solana 地址没有校验位，粘贴到钱包后请逐组核对。</p>
+    </div>
+    <div id="tipBtcWrap" style="display:none">
+      <p><b>比特币地址</b>：只收 BTC（原生隔离见证，bc1q 开头），网络选 <b>Bitcoin</b>。</p>
+      <div id="tipBtcChunks" class="chunks"></div>
+      <div class="btns"><button type="button" class="ghost" id="tipBtcCopy">复制比特币地址</button></div>
+    </div>
+  </details>
+  <p class="note">「打赏 1/3/5 USDC」按钮是标准 EIP-681 链接，手机上会唤起支持它的钱包，并预填「Base 网络 · USDC 合约 · 金额」。<b>请在钱包里再确认一遍网络和收款地址</b>，也可以点「用 ① 检查这个地址」核对一下，这才是好习惯 😉 检查结果会提醒你「请对方说明网络」，答案就是上面那段：上面列出的 6 个网络都可以，TRC20 不行。<br>记得：在 Base 上转 USDC 需要钱包里有少量 Base 网络的 ETH 付手续费；从交易所提币则不需要。</p>
+</section>
+
+<footer>
+  <p><a href="guide/">新手问答</a> · <a href="guide/usdt-wrong-network.html">USDT 转错链</a> · <a href="guide/forgot-memo.html">忘填 Memo</a> · <a href="guide/address-poisoning.html">地址投毒</a> · <a href="guide/choose-network.html">提币选哪个网络</a> · <a href="guide/usdc-contract-addresses.html">USDC 官方合约</a></p>
+  <p>同一个 AI 代理创业实验里的其他免费项目：<a href="https://zcoldwater.github.io/funding-atlas/" rel="noopener">Funding Atlas</a>（Web3 资助项目地图）· <a href="https://github.com/zColdWater/web3-zh-kit" rel="noopener">web3-zh-kit</a>（Web3 中文本地化工具包）</p>
+  <p>作者：阿岩 · 由 AI 代理按交易所常见客服工单整理编写，人工发布，<b>未经独立安全审计</b> · MIT 开源 · v1.2（2026-11）<span id="repoLink"></span></p>
+  <p>免责声明：本工具只做<b>格式校验和常识提醒</b>，无法判断一个地址属于谁、是否可信，也无法知道交易所实际支持哪些网络，不能替代你自己的核对。有些链的地址长得一模一样、工具分不出来（例如所有 EVM 链共用 0x 地址；比特币现金 BCH、BSV 的旧格式地址和比特币一样）。所有计算都在你的浏览器本地完成，页面不发起任何网络请求。</p>
+</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ 配置：部署时填写 ============ */
+// 收款地址的唯一配置位置。必须是带大小写校验（EIP-55）的 Base 地址，并且和主持人面板登记的 f01 地址完全一致。
+// 留空、校验不过、或者是代币合约 / 0 地址 / 销毁地址时，页面不显示任何付款入口。
+const TIP_ADDRESS = "0xF6ec323b6b636111A32c9786d3786D30BD1D0c49";
+// 备用收款地址（可留空）：必须与主持人面板登记的 f01 Solana / Bitcoin 地址完全一致；校验不过就不显示。
+// 只有上面的 EVM 地址合格、打赏区显示时，才会显示这两个。
+const TIP_SOL = "ExbiPS2wraxSmt3SuuLo9CZn23kp1viDTz8GUWxFvJxp";
+const TIP_BTC = "bc1qag0mukj9yhanv42qazwd3uc3a9sqnggaazytua";
+const REPO_URL = "https://github.com/zColdWater/safe-send";      // 源码仓库链接，可留空。
+
+/*CORE-START*/
+/* ---------- 纯 JS 哈希与编码（零依赖） ---------- */
+const SHA256_K = new Uint32Array([
+0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+function sha256(msg){
+  const H = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const l = msg.length, total = ((l + 9 + 63) >> 6) << 6;
+  const p = new Uint8Array(total); p.set(msg); p[l] = 0x80;
+  const dv = new DataView(p.buffer);
+  dv.setUint32(total - 4, (l * 8) >>> 0); dv.setUint32(total - 8, Math.floor(l * 8 / 4294967296));
+  const W = new Uint32Array(64);
+  for (let off = 0; off < total; off += 64){
+    for (let i = 0; i < 16; i++) W[i] = dv.getUint32(off + i * 4);
+    for (let i = 16; i < 64; i++){
+      const x = W[i-15], y = W[i-2];
+      const s0 = ((x>>>7)|(x<<25)) ^ ((x>>>18)|(x<<14)) ^ (x>>>3);
+      const s1 = ((y>>>17)|(y<<15)) ^ ((y>>>19)|(y<<13)) ^ (y>>>10);
+      W[i] = (W[i-16] + s0 + W[i-7] + s1) >>> 0;
+    }
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for (let i = 0; i < 64; i++){
+      const S1 = ((e>>>6)|(e<<26)) ^ ((e>>>11)|(e<<21)) ^ ((e>>>25)|(e<<7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + SHA256_K[i] + W[i]) >>> 0;
+      const S0 = ((a>>>2)|(a<<30)) ^ ((a>>>13)|(a<<19)) ^ ((a>>>22)|(a<<10));
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H[0]+=a; H[1]+=b; H[2]+=c; H[3]+=d; H[4]+=e; H[5]+=f; H[6]+=g; H[7]+=h;
+  }
+  const out = new Uint8Array(32), odv = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) odv.setUint32(i * 4, H[i]);
+  return out;
+}
+
+const KECCAK_RC = [0x0000000000000001n,0x0000000000008082n,0x800000000000808an,0x8000000080008000n,0x000000000000808bn,0x0000000080000001n,0x8000000080008081n,0x8000000000008009n,0x000000000000008an,0x0000000000000088n,0x0000000080008009n,0x000000008000000an,0x000000008000808bn,0x800000000000008bn,0x8000000000008089n,0x8000000000008003n,0x8000000000008002n,0x8000000000000080n,0x000000000000800an,0x800000008000000an,0x8000000080008081n,0x8000000000008080n,0x0000000080000001n,0x8000000080008008n];
+const KECCAK_ROT = [0,1,62,28,27,36,44,6,55,20,3,10,43,25,39,41,45,15,21,8,18,2,61,56,14];
+function keccak256(bytes){
+  const M = (1n << 64n) - 1n, rate = 136, s = new Array(25).fill(0n);
+  const rotl = (v, n) => n === 0 ? v : ((v << BigInt(n)) | (v >> BigInt(64 - n))) & M;
+  const permute = () => {
+    for (let r = 0; r < 24; r++){
+      const C = [0n,0n,0n,0n,0n];
+      for (let x = 0; x < 5; x++) C[x] = s[x] ^ s[x+5] ^ s[x+10] ^ s[x+15] ^ s[x+20];
+      for (let x = 0; x < 5; x++){ const D = C[(x+4)%5] ^ rotl(C[(x+1)%5], 1); for (let y = 0; y < 25; y += 5) s[y+x] ^= D; }
+      const B = new Array(25);
+      for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) B[y + 5*((2*x + 3*y) % 5)] = rotl(s[x + 5*y], KECCAK_ROT[x + 5*y]);
+      for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) s[x + 5*y] = B[x + 5*y] ^ ((~B[(x+1)%5 + 5*y] & M) & B[(x+2)%5 + 5*y]);
+      s[0] ^= KECCAK_RC[r];
+    }
+  };
+  const padLen = rate - (bytes.length % rate);
+  const p = new Uint8Array(bytes.length + padLen); p.set(bytes);
+  p[bytes.length] ^= 0x01; p[p.length - 1] ^= 0x80;
+  for (let off = 0; off < p.length; off += rate){
+    for (let i = 0; i < rate / 8; i++){ let v = 0n; for (let b = 7; b >= 0; b--) v = (v << 8n) | BigInt(p[off + i*8 + b]); s[i] ^= v; }
+    permute();
+  }
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 4; i++){ let v = s[i]; for (let b = 0; b < 8; b++){ out[i*8 + b] = Number(v & 0xffn); v >>= 8n; } }
+  return out;
+}
+
+const B58_BTC = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const B58_XRP = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";
+function b58decode(str, alphabet){
+  const map = {}; for (let i = 0; i < 58; i++) map[alphabet[i]] = i;
+  const bytes = [];
+  for (const ch of str){
+    let carry = map[ch]; if (carry === undefined) return null;
+    for (let j = 0; j < bytes.length; j++){ carry += bytes[j] * 58; bytes[j] = carry & 0xff; carry >>= 8; }
+    while (carry){ bytes.push(carry & 0xff); carry >>= 8; }
+  }
+  for (let k = 0; k < str.length && str[k] === alphabet[0]; k++) bytes.push(0);
+  return Uint8Array.from(bytes.reverse());
+}
+function checksumOk(raw){ // base58check：最后 4 字节 = 前面内容两次 SHA-256 的前 4 字节
+  if (!raw || raw.length < 5) return false;
+  const body = raw.slice(0, -4), cs = raw.slice(-4), h = sha256(sha256(body));
+  return h[0]===cs[0] && h[1]===cs[1] && h[2]===cs[2] && h[3]===cs[3];
+}
+const toHex = (u8) => Array.from(u8, b => b.toString(16).padStart(2, "0")).join("");
+function eip55(addrNo0x){
+  const lower = addrNo0x.toLowerCase();
+  const hash = toHex(keccak256(new TextEncoder().encode(lower)));
+  let out = "";
+  for (let i = 0; i < 40; i++) out += parseInt(hash[i], 16) >= 8 ? lower[i].toUpperCase() : lower[i];
+  return "0x" + out;
+}
+
+const BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+function bech32Polymod(values){
+  const G = [0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3];
+  let chk = 1;
+  for (const v of values){ const top = chk >>> 25; chk = ((chk & 0x1ffffff) << 5) ^ v; for (let i = 0; i < 5; i++) if ((top >>> i) & 1) chk ^= G[i]; }
+  return chk >>> 0;
+}
+function segwitDecode(str){ // 返回 {hrp, version, program, ok, reason}
+  if (str !== str.toLowerCase() && str !== str.toUpperCase()) return {ok:false, reason:"大小写混用（bc1 地址只能全小写或全大写）"};
+  const s = str.toLowerCase(), pos = s.lastIndexOf("1");
+  if (pos < 1 || pos + 7 > s.length || s.length > 90) return {ok:false, reason:"长度或结构不对"};
+  const hrp = s.slice(0, pos), data = [];
+  for (const c of s.slice(pos + 1)){ const d = BECH32_CHARSET.indexOf(c); if (d < 0) return {ok:false, reason:`含有 bech32 不允许的字符「${c}」（b、i、o、1 不会出现在地址数据部分）`}; data.push(d); }
+  const exp = []; for (const c of hrp) exp.push(c.charCodeAt(0) >> 5); exp.push(0); for (const c of hrp) exp.push(c.charCodeAt(0) & 31);
+  const pm = bech32Polymod(exp.concat(data));
+  const enc = pm === 1 ? "bech32" : pm === 0x2bc830a3 ? "bech32m" : null;
+  if (!enc) return {ok:false, hrp, reason:"校验码不对：很可能有字符打错或被改动"};
+  const values = data.slice(0, -6); if (!values.length) return {ok:false, hrp, reason:"缺少数据"};
+  const version = values[0];
+  let acc = 0, bits = 0; const prog = [];
+  for (const v of values.slice(1)){ acc = (acc << 5) | v; bits += 5; while (bits >= 8){ bits -= 8; prog.push((acc >> bits) & 0xff); } }
+  if (bits >= 5 || ((acc << (8 - bits)) & 0xff)) return {ok:false, hrp, reason:"数据填充不合法"};
+  if (version > 16 || prog.length < 2 || prog.length > 40) return {ok:false, hrp, reason:"见证程序长度不合法"};
+  if (version === 0 && prog.length !== 20 && prog.length !== 32) return {ok:false, hrp, reason:"v0 地址长度不合法"};
+  if ((version === 0 && enc !== "bech32") || (version !== 0 && enc !== "bech32m")) return {ok:false, hrp, reason:"编码版本与见证版本不匹配"};
+  return {ok:true, hrp, version, program: prog};
+}
+function crc16xmodem(bytes){
+  let crc = 0;
+  for (const b of bytes){ crc ^= b << 8; for (let i = 0; i < 8; i++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff; }
+  return crc;
+}
+function b64decode(s){
+  try { const std = s.replace(/-/g, "+").replace(/_/g, "/"); const bin = atob(std); return Uint8Array.from(bin, c => c.charCodeAt(0)); }
+  catch (e) { return null; }
+}
+
+/* ---------- 已知「不能当收款地址」的地址 ---------- */
+const KNOWN = {
+  "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": "Base 上的 USDC 代币合约",
+  "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": "以太坊上的 USDC 代币合约",
+  "0xaf88d065e77c8cc2239327c5edb3a432268e5831": "Arbitrum 上的 USDC 代币合约",
+  "0x0b2c639c533813f4aa9d7837caf62653d097ff85": "OP Mainnet 上的 USDC 代币合约",
+  "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359": "Polygon 上的 USDC 代币合约",
+  "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e": "Avalanche 上的 USDC 代币合约",
+  "0xdac17f958d2ee523a2206206994597c13d831ec7": "以太坊上的 USDT 代币合约",
+  "0x55d398326f99059ff775485246999027b3197955": "BNB Smart Chain 上的 USDT 代币合约",
+  "0x4200000000000000000000000000000000000006": "Base / OP 上的 WETH 代币合约",
+  "0x0000000000000000000000000000000000000000": "0 地址（无人控制）",
+  "0x000000000000000000000000000000000000dead": "销毁地址（无人控制，转进去等于销毁）",
+  "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t": "TRON 上的 USDT 代币合约",
+  "T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb": "TRON 的 0 地址（无人控制）",
+  "1111111111111111111114oLvT2": "比特币的 0 地址（无人控制，转进去等于销毁）",
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "Solana 上的 USDC 代币（Mint）地址",
+  "11111111111111111111111111111111": "Solana 系统程序地址（不是任何人的钱包）",
+  // XRP 黑洞地址，来源：xrpl.org/docs/concepts/accounts/addresses 的 Special Addresses
+  "rrrrrrrrrrrrrrrrrrrrrhoLvTp": "XRP 黑洞地址 ACCOUNT_ZERO（无人控制）",
+  "rrrrrrrrrrrrrrrrrrrrBZbvji": "XRP 黑洞地址 ACCOUNT_ONE（无人控制）",
+  "rrrrrrrrrrrrrrrrrNAMEtxvNvQ": "XRP 黑洞地址（旧 Ripple 名称预留地址，无人控制）",
+  "rrrrrrrrrrrrrrrrrrrn5RM1rHd": "XRP 黑洞地址（NaN 地址，无人控制）",
+};
+
+const FAM = {
+  evm: "EVM 地址（以太坊系，0x 开头）", tron: "TRON 地址", btc: "比特币地址", ltc: "莱特币地址",
+  doge: "狗狗币地址", sol: "Solana 地址", ton: "TON 地址", xrp: "XRP 地址",
+};
+
+/* ---------- 地址识别 ---------- */
+function detect(raw){
+  const F = [];
+  const add = (level, text) => F.push({level, text});
+  const res = {fam:null, clean:"", valid:false, findings:F, label:""};
+  if (!raw || !raw.trim()) return null;
+
+  if (/[​-‏‪-‮⁠-⁤﻿­]/.test(raw))
+    add("bad", "地址里藏着<b>不可见字符</b>（零宽字符 / 文字方向控制符）。这是篡改地址的常见手法，也可能是从网页复制时带进来的。请从官方页面重新复制，不要用这一份。");
+  let s = raw.replace(/[​-‏‪-‮⁠-⁤﻿­]/g, "");
+  if (/\S\s+\S/.test(s.trim())) add("warn", "地址中间有<b>空格或换行</b>，我已去掉后再检查。转账时请确认粘贴的是一整串、不含空格的地址。");
+  s = s.replace(/\s+/g, "");
+  if (/[^\x21-\x7E]/.test(s)) {
+    add("bad", "地址里有<b>非英文字符</b>（全角字符、中文标点，或长得像英文的西里尔字母）。真正的地址只由英文字母和数字组成——这一份极可能被替换过。");
+    res.clean = s; return res;
+  }
+  res.clean = s;
+  if (KNOWN[s] || KNOWN[s.toLowerCase()]) {
+    const k = KNOWN[s] || KNOWN[s.toLowerCase()];
+    add("bad", `这是 <b>${k}</b>，不是任何人的收款地址。往这里转币，基本等于永久丢失。你要找的应该是对方给你的个人地址或交易所的充值地址。`);
+  }
+
+  // 域名
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.(eth|sol|ton|bnb|crypto|x|nft|wallet)$/i.test(s)) {
+    add("info", "这看起来是一个<b>域名</b>（如 ENS / Basename），不是地址。很多交易所提币只认真实地址；在钱包里使用域名时，请核对它解析出来的实际地址。");
+    return res;
+  }
+  // EVM
+  if (/^0[xX][0-9a-fA-F]{40}$/.test(s)) {
+    res.fam = "evm"; res.label = FAM.evm;
+    if (s[1] === "X") add("warn", "前缀是大写的「0X」，标准写法是小写「0x」。有些钱包会拒绝，建议从源头重新复制。");
+    const body = s.slice(2), hasL = /[a-f]/.test(body), hasU = /[A-F]/.test(body);
+    if (hasL && hasU) {
+      if (eip55(body) === "0x" + body) { res.valid = true; add("ok", "大小写校验（EIP-55）<b>通过</b>：没有发现打错或被改动的字符。"); }
+      else add("bad", "大小写校验（EIP-55）<b>不通过</b>：这个地址很可能被改动过，或者是手抄时打错了。请从源头重新复制，<b>千万不要自己动手改</b>。");
+    } else {
+      res.valid = true;
+      add("warn", "这个地址是全小写（或全大写），<b>没有大小写校验</b>，工具没法发现单个字符的错误。请用下面的分段逐组核对。");
+    }
+    return res;
+  }
+  if (/^[0-9a-fA-F]{64}$/.test(s) || /^0x[0-9a-fA-F]{64}$/i.test(s)) {
+    add("bad", "这是 64 位十六进制，看起来像<b>交易哈希（TXID）或私钥</b>，不是收款地址。如果这是私钥，请不要把它粘贴到任何地方。");
+    return res;
+  }
+  if (/^[0-9a-fA-F]{40}$/.test(s)) {
+    res.fam = "evm"; res.label = FAM.evm;
+    add("warn", "看起来是<b>缺了「0x」前缀</b>的 EVM 地址。可能复制时漏了开头，请从源头重新完整复制。");
+    return res;
+  }
+  if (/^0x[0-9a-fA-F]+$/i.test(s)) {
+    res.fam = "evm"; res.label = FAM.evm;
+    add("bad", `0x 开头但长度不对：EVM 地址应该是「0x + 40 位」，这个是「0x + ${s.length - 2} 位」。很可能<b>复制多了或少了字符</b>。`);
+    return res;
+  }
+  // TON 原始格式
+  if (/^-?[01]:[0-9a-fA-F]{64}$/.test(s)) {
+    res.fam = "ton"; res.label = FAM.ton + "（原始格式）"; res.valid = true;
+    add("info", "这是 TON 的<b>原始格式</b>地址。交易所和多数钱包使用 EQ / UQ 开头的格式，转账前请确认对方接受这种写法。");
+    return res;
+  }
+  // bech32 / bech32m
+  if (/^(bc1|ltc1|tb1)/i.test(s)) {
+    const d = segwitDecode(s), prefix = s.toLowerCase().split("1")[0];
+    res.fam = prefix === "ltc" ? "ltc" : "btc"; res.label = FAM[res.fam];
+    if (prefix === "tb") { add("bad", "这是比特币<b>测试网</b>地址（tb1 开头），主网的币不能转到这里。"); return res; }
+    if (!d.ok) { add("bad", `地址校验<b>不通过</b>：${d.reason}。请从源头重新复制。`); return res; }
+    // 校验码算的是「整个前缀 + 数据」，前缀必须正好是 bc 或 ltc，否则只是一串校验码碰巧自洽的字符
+    if (d.hrp !== "bc" && d.hrp !== "ltc") { add("bad", `地址<b>前缀不对</b>：比特币地址的前缀应该是「bc1」，莱特币是「ltc1」，这个是「${d.hrp}1」。这不是一个可用的地址，请从源头重新复制。`); return res; }
+    res.fam = d.hrp === "ltc" ? "ltc" : "btc"; res.label = FAM[res.fam];
+    const taproot = d.version === 1 && d.program.length === 32;
+    if (d.version >= 2 || (d.version === 1 && !taproot)) {
+      res.label += ` · SegWit v${d.version}`;
+      add("bad", `这是<b>尚未启用的 SegWit v${d.version} 格式</b>（校验码本身没错）。正常钱包和交易所不会给出这种地址，转进去可能永久丢失。请让对方重新提供地址。`);
+      return res;
+    }
+    res.valid = true;
+    const kind = d.version === 0 ? (d.program.length === 20 ? "SegWit（P2WPKH）" : "SegWit（P2WSH）") : "Taproot";
+    res.label += ` · ${kind}`;
+    add("ok", "校验码（bech32）<b>通过</b>：没有发现打错的字符。");
+    if (taproot) add("info", "这是 <b>Taproot（bc1p）</b>地址。少数老平台还不支持向这种地址提币，提币页报错时别反复尝试，换一个对方提供的其他格式地址。");
+    return res;
+  }
+  // TON 用户友好格式（48 位 base64）
+  if (/^[A-Za-z0-9_\-+/]{48}$/.test(s) && /^[EUk0]Q/.test(s)) {
+    const b = b64decode(s); res.fam = "ton"; res.label = FAM.ton;
+    if (!b || b.length !== 36) { add("bad", "TON 地址解码失败，可能有字符损坏。"); return res; }
+    const crc = crc16xmodem(b.slice(0, 34));
+    if (((crc >> 8) & 0xff) !== b[34] || (crc & 0xff) !== b[35]) { add("bad", "TON 地址校验码<b>不通过</b>：很可能有字符打错或被改动。请从源头重新复制。"); return res; }
+    const tag = b[0];
+    if (tag & 0x80) { add("bad", "这是 TON <b>测试网</b>地址，主网资产不能转到这里。"); return res; }
+    if (tag !== 0x11 && tag !== 0x51) { add("bad", "TON 地址的类型标记不对，这不是标准的 EQ / UQ 地址。请从源头重新复制。"); return res; }
+    res.valid = true;
+    const bounce = (tag & 0x7f) === 0x11;
+    res.label += bounce ? " · 可回弹（EQ）" : " · 不可回弹（UQ）";
+    add("ok", "TON 地址校验码<b>通过</b>。");
+    if (bounce) add("info", "这是「可回弹」格式（EQ 开头）。如果对方是<b>还没激活的新钱包</b>，转账可能被原路退回（扣手续费）；给新钱包转账建议用 UQ 开头的格式。");
+    return res;
+  }
+  // XRP（瑞波专用字母表）
+  let xrpLike = false;
+  if (/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(s)) {
+    const x = b58decode(s, B58_XRP);
+    if (x && x.length === 25 && x[0] === 0) {
+      if (checksumOk(x)) {
+        res.fam = "xrp"; res.label = FAM.xrp; res.valid = true;
+        add("ok", "XRP 地址校验码<b>通过</b>。");
+        return res;
+      }
+      xrpLike = true;
+    }
+  }
+  // base58 系：TRON / BTC / LTC / DOGE / Solana
+  if (/^[1-9A-HJ-NP-Za-km-z]{25,44}$/.test(s)) {
+    const raw58 = b58decode(s, B58_BTC);
+    if (xrpLike && !(raw58 && raw58.length === 32)) {
+      res.fam = "xrp"; res.label = FAM.xrp;
+      add("bad", "像是 XRP 地址，但校验码<b>不通过</b>：很可能有字符打错或被改动。请从源头重新复制。");
+      return res;
+    }
+    if (raw58 && raw58.length === 25) {
+      const VER = {0x41:["tron","TRON"],0x00:["btc","比特币 · 传统地址（P2PKH）"],0x05:["btc","比特币 · 脚本地址（P2SH）"],0x30:["ltc","莱特币"],0x32:["ltc","莱特币 · P2SH"],0x1e:["doge","狗狗币"],0x16:["doge","狗狗币 · P2SH"]};
+      const v = VER[raw58[0]];
+      if (v && checksumOk(raw58)) {
+        res.fam = v[0]; res.label = FAM[v[0]] + (v[0] === "tron" ? "" : `（${v[1]}）`); res.valid = true;
+        add("ok", "地址校验码（base58check）<b>通过</b>：没有发现打错的字符。");
+        if (raw58[0] === 0x05) add("info", "3 开头的地址在比特币和莱特币（旧格式）上都可能出现，请确认对方要的是哪条链。");
+        if (raw58[0] === 0x00 || raw58[0] === 0x05) add("info", "比特币现金（BCH）、BSV 的旧格式地址和比特币<b>长得一模一样</b>，工具分不出来。请确认对方要收的是 BTC，而不是 BCH / BSV。");
+        return res;
+      }
+      const guess = s[0] === "T" ? "tron" : (s[0] === "1" || s[0] === "3") ? "btc" : (s[0] === "L" || s[0] === "M") ? "ltc" : s[0] === "D" ? "doge" : null;
+      if (guess) { res.fam = guess; res.label = FAM[guess]; }
+      add("bad", `${guess ? "像是" + FAM[guess] + "，但" : ""}地址校验码<b>不通过</b>：很可能有字符打错、漏掉或被改动。请从源头重新复制。`);
+      return res;
+    }
+    if (raw58 && raw58.length === 32) {
+      res.fam = "sol"; res.label = FAM.sol; res.valid = true;
+      add("warn", "格式符合 Solana 地址。注意：<b>Solana 地址没有校验位</b>，打错一个字符也会是一个「合法」的别人的地址。请用下面的分段逐组核对。");
+      return res;
+    }
+    if (s[0] === "T" && s.length === 34) { res.fam = "tron"; res.label = FAM.tron; add("bad", "像是 TRON 地址，但解码失败，可能有字符错误。"); return res; }
+    if (s[0] === "r") { res.fam = "xrp"; res.label = FAM.xrp; add("bad", "像是 XRP 地址，但校验码<b>不通过</b>：很可能有字符打错。请从源头重新复制。"); return res; }
+  }
+  if (/^T/.test(s) && s.length !== 34 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(s)) {
+    res.fam = "tron"; res.label = FAM.tron;
+    add("bad", `像是 TRON 地址，但长度是 ${s.length} 位（应该是 34 位），可能复制多了或少了字符。`);
+    return res;
+  }
+  add("warn", "我认不出这是哪条链的地址。本工具支持：EVM（以太坊/BSC/Base/Arbitrum 等）、TRON、比特币、莱特币、狗狗币、Solana、TON、XRP。如果是别的链，请格外仔细地在官方页面核对。");
+  return res;
+}
+
+/* ---------- 网络 ---------- */
+const NETS = [
+  ["", "（请选择）"],
+  ["eth", "Ethereum（ERC20）", "evm", "ETH"],
+  ["bsc", "BNB Smart Chain（BEP20）", "evm", "BNB"],
+  ["base", "Base", "evm", "ETH"],
+  ["arb", "Arbitrum One", "evm", "ETH"],
+  ["op", "Optimism（OP Mainnet）", "evm", "ETH"],
+  ["polygon", "Polygon PoS", "evm", "POL"],
+  ["avax", "Avalanche C-Chain", "evm", "AVAX"],
+  ["evm_other", "其他 EVM 链", "evm", null],
+  ["tron", "TRON（TRC20）", "tron", "TRX"],
+  ["sol", "Solana（SPL）", "sol", "SOL"],
+  ["btc", "Bitcoin", "btc", null],
+  ["ltc", "Litecoin", "ltc", null],
+  ["doge", "Dogecoin", "doge", null],
+  ["ton", "TON", "ton", "TON", "Memo / Comment（备注）"],
+  ["xrp", "XRP Ledger", "xrp", "XRP", "Destination Tag（目标标签）"],
+  ["memo_other", "其他需要 Memo 的链（XLM、ATOM、EOS 等）", "other", null, "Memo / Tag"],
+];
+const NET = Object.fromEntries(NETS.map(n => [n[0], {key:n[0], name:n[1], fam:n[2], gas:n[3], memo:n[4] || null}]));
+
+// gate：这条信息没处理之前，大标题不允许显示「没发现问题」
+function crossCheck(det, netKey, recip, memo){
+  const F = [], add = (level, text, gate) => F.push(gate ? {level, text, gate} : {level, text});
+  const net = NET[netKey];
+  // 没确认是一个有效地址（例如域名、认不出的格式）时，后面不管查出什么，都不能给「没发现问题」
+  if (det && !det.valid && !det.findings.some(f => f.level === "bad" || f.level === "warn")) add("info", "这一份还不能确认是一个有效的收款地址，所以我<b>不会</b>给出「没问题」的结论。", "还不能确认这是有效的收款地址——先别转，请核对实际地址");
+  if (!net || !netKey) {
+    add("info", "还没选<b>网络</b>。选错网络、或者对方不支持这个网络，是丢币最常见的原因——选好网络后我再帮你交叉核对。", "地址格式查完了，但还没核对网络——先别转，请先选择网络");
+    return F;
+  }
+  if (net.fam === "other") {
+    if (det && det.fam) add("bad", `地址是「${det.label || FAM[det.fam]}」，不是 XLM / ATOM / EOS 这类链的地址——<b>两者不通用</b>。请在上面改选和这个地址对应的网络，或者从官方页面重新复制你要用的那条链的地址。`);
+    else add("info", "本工具不校验这些链的地址格式，请在官方页面仔细核对。");
+  } else if (det && det.fam && det.fam !== net.fam) {
+    let tip = "多数交易所会直接拒绝这种提币；如果是在钱包里手动转账，可能导致资产丢失。";
+    if (det.fam === "evm" && net.fam === "tron") tip = "TRC20 只能转到 <b>T 开头</b>的 TRON 地址。对方给你的是 0x 地址，说明对方要的是 EVM 网络（ERC20 / BEP20 / Base…），请让对方明确告诉你网络名称。";
+    else if (det.fam === "tron" && net.fam === "evm") tip = "T 开头是 TRON 地址，转 USDT 要选 <b>TRC20</b> 网络。";
+    else if (["btc","ltc","doge"].includes(det.fam) && ["btc","ltc","doge"].includes(net.fam)) tip = "比特币、莱特币、狗狗币的地址长得像，但是<b>完全不同的链</b>，转错基本找不回。";
+    add("bad", `地址是「${det.label || FAM[det.fam]}」，你选的网络是「${net.name}」——<b>两者不通用</b>。${tip}`);
+  } else if (det && det.fam === net.fam && det.valid) {
+    add("ok", `地址格式与「${net.name}」网络<b>匹配</b>。`);
+  }
+
+  if (net.fam === "evm" && (!det || det.fam === "evm")) {
+    if (recip === "exchange") {
+      add("warn", `<b>最常见的丢币原因就在这里</b>：0x 地址在所有 EVM 链上长得一模一样，格式检查<b>没法告诉你交易所是否支持「${net.name}」</b>。请回到交易所的「充值」页面，确认能选到 ${net.name}，并且这个地址是在选择 ${net.name} 之后显示的。选了不支持的网络，只能找客服人工找回，可能收费、可能找不回。`);
+      if (netKey === "base") add("info", "并不是所有交易所都开通了 Base 网络充值，尤其要确认。");
+    } else if (recip === "self") {
+      add("info", `普通自托管钱包（助记词钱包）的同一个 0x 地址在所有 EVM 链上都能收币，到账后要在钱包里<b>切换或添加「${net.name}」网络</b>才看得到。但如果是<b>智能合约钱包</b>（如 Safe 多签），它在每条链上要单独部署，转之前确认它在 ${net.name} 上存在。`);
+    } else if (recip === "other") {
+      add("warn", "请让对方明确告诉你<b>网络名称</b>，不要只给一个 0x 地址——对方能在 A 链收，不代表在 B 链也能收（比如对方给的是交易所地址或合约钱包）。");
+    } else {
+      add("warn", `0x 地址在所有 EVM 链上长得一模一样，格式检查<b>没法告诉你收款方是否支持「${net.name}」</b>。如果是交易所充值地址，请回到充值页确认能选到 ${net.name}；如果是别人给的，请让对方明确说出网络名称。`);
+    }
+    if (net.gas) add("info", `如果你是从自己的钱包发送：在 ${net.name} 上转任何代币都要用 <b>${net.gas}</b> 付手续费。钱包里只有 USDC/USDT、没有 ${net.gas}，是转不出去的。`);
+  }
+  if (net.fam === "tron" && (!det || det.fam === "tron")) {
+    add("info", "如果你是从自己的钱包发送：TRC20 转账会消耗能量和带宽，钱包里要留一些 <b>TRX</b>，否则转不出去。");
+    if (recip === "exchange") add("warn", "请在交易所充值页确认支持 <b>TRC20</b> 网络，并且要充的币种和你转的一致。");
+  }
+  if (net.fam === "sol" && (!det || det.fam === "sol")) {
+    if (recip === "exchange") add("warn", "请在交易所充值页确认支持 <b>Solana</b> 网络，并且要充的币种和你转的一致。");
+    add("info", "如果你是从自己的钱包发送：Solana 上转账需要少量 <b>SOL</b> 付手续费。");
+  }
+  if (net.memo) {
+    const has = memo && memo.trim();
+    if (recip === "exchange") {
+      if (!has) add("bad", `你要转入交易所，但<b>还没填写 ${net.memo}</b>。这类链的交易所充值地址通常是很多人共用的，靠 Memo/Tag 区分是谁的钱——漏填就只能提交工单人工找回。请回到充值页复制 ${net.memo}；如果充值页确实没有显示，再留空。`);
+      else {
+        add("ok", `已填写 ${net.memo}。请再和充值页逐字核对一遍。`);
+        if (net.key === "xrp" && !/^\d+$/.test(memo.trim())) add("bad", "XRP 的 Destination Tag <b>只能是纯数字</b>，你填的内容里有非数字字符。");
+      }
+    } else if (recip === "self" && net.key === "xrp") {
+      add("info", "转给自己的 XRP 钱包一般不需要 Tag。注意：新的 XRP 账户需要先满足最低储备要求才能激活。");
+    }
+  }
+  if (net.fam === "btc" && recip === "exchange") add("warn", "请在交易所充值页确认地址格式和网络（例如是否显示为 Bitcoin / BTC 网络，而不是某条链上的「包装 BTC」）。");
+  if (!recip) add("info", "再选一下<b>收款方是谁</b>（交易所 / 自己 / 别人）。Memo / Tag 漏填、交易所不支持某个网络，都要知道收款方才能检查。", "还差一步：选一下收款方是谁，再决定转不转");
+  return F;
+}
+
+/* ---------- 大标题：只有所有必要信息都齐了、且没有任何提醒时，才说「没发现问题」 ---------- */
+function verdictOf(list){
+  const has = (lv) => list.some(f => f.level === lv);
+  const gate = list.find(f => f.gate);
+  const lv = has("bad") ? "bad" : has("warn") ? "warn" : gate ? "gate" : has("ok") ? "ok" : "info";
+  const nBad = list.filter(f => f.level === "bad").length;
+  const text = {bad:`🛑 先别转！发现 ${nBad} 个严重问题`, warn:"⚠️ 先处理下面的提醒，再继续", gate:`ℹ️ ${gate ? gate.gate : ""}`, ok:"✅ 没发现问题。最后一步：大额请先小额测试", info:"ℹ️ 补充信息后结果更准确"}[lv];
+  return {lv, cls: lv === "gate" ? "info" : lv, text};
+}
+
+/* ---------- 打赏地址自检：不合格就不显示任何付款入口 ---------- */
+function tipAddressProblem(a){
+  if (typeof a !== "string" || !a) return "未配置";
+  if (a !== a.trim()) return "首尾有空白字符";
+  if (!/^0x[0-9a-fA-F]{40}$/.test(a)) return "不是 0x + 40 位十六进制";
+  const body = a.slice(2);
+  if (!(/[a-f]/.test(body) && /[A-F]/.test(body))) return "缺少 EIP-55 大小写校验（全小写或全大写），无法发现手误";
+  if (eip55(body) !== a) return "EIP-55 大小写校验不通过（地址有字符错误）";
+  if (KNOWN[a.toLowerCase()]) return "这是 " + KNOWN[a.toLowerCase()] + "，不能收款";
+  const det = detect(a);
+  if (!det || det.fam !== "evm" || !det.valid || det.findings.some(f => f.level === "bad" || f.level === "warn")) return "地址自检未通过";
+  return null;
+}
+// 备用地址（Solana / Bitcoin）：必须被识别成指定的链、格式有效、没有任何红色问题。
+// Bitcoin 只接受 bech32 校验通过且没有任何警告的地址；Solana 天生没有校验位，只允许那一条「没有校验位」的提醒。
+function altTipProblem(a, fam){
+  if (typeof a !== "string" || !a) return "未配置";
+  if (a !== a.trim()) return "首尾有空白字符";
+  if (KNOWN[a] || KNOWN[a.toLowerCase()]) return "这是已知的系统 / 合约地址，不能收款";
+  const det = detect(a);
+  if (!det || det.fam !== fam || !det.valid || det.clean !== a) return "地址自检未通过";
+  if (det.findings.some(f => f.level === "bad")) return "地址自检发现严重问题";
+  if (fam === "btc" && !(/^bc1q/.test(a) && det.findings.some(f => f.level === "ok") && !det.findings.some(f => f.level === "warn"))) return "比特币地址只接受校验通过的 bc1q 地址";
+  if (fam === "sol" && det.findings.filter(f => f.level === "warn").length > 1) return "Solana 地址自检有额外提醒";
+  if (fam !== "btc" && fam !== "sol") return "只支持 sol / btc";
+  return null;
+}
+
+/* ---------- 地址投毒比对 ---------- */
+function comparePoison(a, b){
+  const norm = (x) => x.replace(/\s+/g, "");
+  let A = norm(a), B = norm(b);
+  const evm = /^0x[0-9a-f]{40}$/i.test(A) && /^0x[0-9a-f]{40}$/i.test(B);
+  const ca = evm ? A.toLowerCase() : A, cb = evm ? B.toLowerCase() : B;
+  if (ca === cb) return {same:true, A, B, diffIdx:[]};
+  const start = evm ? 2 : 0;
+  let pre = 0; while (start + pre < ca.length && start + pre < cb.length && ca[start + pre] === cb[start + pre]) pre++;
+  let suf = 0; while (suf < ca.length - start - pre && suf < cb.length - start - pre && ca[ca.length - 1 - suf] === cb[cb.length - 1 - suf]) suf++;
+  const diffIdx = [];
+  if (ca.length === cb.length) for (let i = 0; i < ca.length; i++) if (ca[i] !== cb[i]) diffIdx.push(i);
+  return {same:false, A, B, pre, suf, diffIdx, sameLen: ca.length === cb.length, poison: pre >= 3 && suf >= 3};
+}
+/*CORE-END*/
+
+/* ---------- 界面 ---------- */
+const $ = (id) => document.getElementById(id);
+const ICON = {bad:"✖", warn:"!", ok:"✔", info:"i"};
+function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); setTimeout(() => el.classList.remove("on"), 1600); }
+function copyText(t){
+  const done = () => toast("已复制");
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => fallback());
+  else fallback();
+  function fallback(){ const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) { toast("复制失败，请手动复制"); } ta.remove(); }
+}
+function chunksEl(addr){
+  const box = document.createElement("div"); box.className = "chunks";
+  let body = addr, n = 1;
+  if (/^0x/i.test(addr)) { const s = document.createElement("span"); s.textContent = addr.slice(0, 2); box.appendChild(s); body = addr.slice(2); }
+  for (let i = 0; i < body.length; i += 4) {
+    const s = document.createElement("span"), idx = document.createElement("i");
+    idx.textContent = n++; s.appendChild(idx); s.appendChild(document.createTextNode(body.slice(i, i + 4))); box.appendChild(s);
+  }
+  return box;
+}
+function renderFindings(list){
+  const ul = document.createElement("ul"); ul.className = "findings";
+  for (const f of list) {
+    const li = document.createElement("li"); li.className = f.level;
+    const ic = document.createElement("span"); ic.className = "ic"; ic.textContent = ICON[f.level];
+    const tx = document.createElement("span"); tx.innerHTML = f.text; // 文案均为本页常量，不含用户输入
+    li.appendChild(ic); li.appendChild(tx); ul.appendChild(li);
+  }
+  return ul;
+}
+function verdictEl(list){
+  const v = verdictOf(list);
+  const d = document.createElement("div"); d.className = "verdict " + v.cls; d.textContent = v.text; return d;
+}
+
+function updateCheck(){
+  const raw = $("addr").value, netKey = $("net").value;
+  const recip = (document.querySelector('input[name="recip"]:checked') || {}).value || "";
+  const net = NET[netKey];
+  $("memoWrap").style.display = net && net.memo ? "" : "none";
+  if (net && net.memo) $("memoLabel").textContent = net.memo;
+  const out = $("result"); out.innerHTML = "";
+  const det = detect(raw);
+  if (!det) return;
+  const all = det.findings.concat(crossCheck(det, netKey, recip, $("memo").value));
+  out.appendChild(verdictEl(all));
+  if (TIP_ON && verdictOf(all).lv === "ok") {
+    const t = document.createElement("p"); t.className = "note";
+    t.innerHTML = '这次检查帮到你了？可以<a href="#tip">请阿岩喝杯咖啡</a>（Base 等网络的 USDC / USDT 都行，完全自愿），或者<a href="#share">转给一个刚入门的朋友</a>。';
+    out.appendChild(t);
+  }
+  if (det.fam) { const p = document.createElement("p"); p.innerHTML = "识别结果："; const c = document.createElement("span"); c.className = "chain"; c.textContent = det.label || FAM[det.fam]; p.appendChild(c); out.appendChild(p); }
+  out.appendChild(renderFindings(all));
+  if (det.clean && det.clean.length >= 20 && det.clean.length <= 100) {
+    const h = document.createElement("p"); h.className = "note"; h.style.marginTop = "14px";
+    h.textContent = "分段核对：和对方给你的地址逐组对照。不要只看开头和结尾——地址投毒伪造的就是头尾。";
+    out.appendChild(h); out.appendChild(chunksEl(det.clean));
+  }
+}
+
+function updatePoison(){
+  const out = $("poisonResult"); out.innerHTML = "";
+  const a = $("pa").value.trim(), b = $("pb").value.trim();
+  if (!a || !b) return;
+  const r = comparePoison(a, b);
+  const F = [];
+  if (r.same) F.push({level:"ok", text:"两个地址<b>完全一致</b>。"});
+  else if (r.poison) F.push({level:"bad", text:`<b>典型的地址投毒特征</b>：开头 ${r.pre} 位、结尾 ${r.suf} 位一模一样，中间却不同。立刻停止，从官方页面重新复制地址，并把 B 这个地址从你的常用记录里删掉。`});
+  else F.push({level:"bad", text: r.sameLen ? `两个地址<b>不一致</b>：有 ${r.diffIdx.length} 处字符不同（已用黄色标出）。` : "两个地址<b>不一致</b>：连长度都不同。"});
+  out.appendChild(verdictEl(F)); out.appendChild(renderFindings(F));
+  if (!r.same) {
+    const diff = new Set(r.diffIdx);
+    for (const [lab, s] of [["A. 可信来源", r.A], ["B. 准备转去", r.B]]) {
+      const d = document.createElement("div"); d.className = "diffline";
+      const l = document.createElement("span"); l.className = "lab"; l.textContent = lab; d.appendChild(l);
+      for (let i = 0; i < s.length; i++) {
+        if (diff.has(i)) { const m = document.createElement("mark"); m.textContent = s[i]; d.appendChild(m); }
+        else d.appendChild(document.createTextNode(s[i]));
+      }
+      out.appendChild(d);
+    }
+  }
+}
+
+function updateChecklist(){
+  const boxes = [...document.querySelectorAll("#checklist input")];
+  const n = boxes.filter(b => b.checked).length, out = $("checkResult"); out.innerHTML = "";
+  if (!n) return;
+  const d = document.createElement("div");
+  if (n === boxes.length) { d.className = "verdict ok"; d.textContent = `✅ ${n}/${boxes.length} 全部确认。可以转了——大额记得先小额测试。`; }
+  else { d.className = "verdict warn"; d.textContent = `已确认 ${n}/${boxes.length}。还有 ${boxes.length - n} 条没打勾，先别急着点确认。`; }
+  out.appendChild(d);
+}
+
+function updateTicket(){
+  const v = (id) => $(id).value.trim() || "（未填写）";
+  const TYPES = {net:["充值时选错了网络","Deposit sent via the wrong network"], memo:["充值时漏填/填错了 Memo 或 Tag","Deposit with missing/incorrect Memo or Tag"], pending:["链上转账已成功，但账户未入账","Transaction confirmed on-chain but not credited to my account"], other:["充值问题","Deposit issue"]};
+  const T = TYPES[$("t_type").value] || TYPES.other;
+  const seen = $("t_seen").checked, shot = $("t_shot").checked;
+  const zhEnd = (seen ? "该交易在区块浏览器上已显示成功。" : "") + (shot ? "钱包转出截图已附上。" : "");
+  const enEnd = (seen ? "The transaction shows as successful on the block explorer. " : "") + (shot ? "A screenshot of the outgoing transfer is attached. " : "");
+  const zh = `您好，我在 ${v("t_plat")} 遇到「${T[0]}」的问题，信息如下：
+- 账户 UID：${v("t_uid")}
+- 币种 / 数量：${v("t_coin")} / ${v("t_amt")}
+- 实际使用的网络：${v("t_net")}
+- 交易哈希（TXID）：${v("t_tx")}
+- 收款 / 充值地址：${v("t_to")}
+- Memo / Tag：${v("t_memo")}
+- 转账时间：${v("t_time")}
+${zhEnd}请帮我确认能否找回或入账，以及需要的时间和费用。谢谢！`;
+  const en = `Hello, I have an issue on ${v("t_plat")}: ${T[1]}.
+- Account UID: ${v("t_uid")}
+- Asset / Amount: ${v("t_coin")} / ${v("t_amt")}
+- Network actually used: ${v("t_net")}
+- Transaction hash (TXID): ${v("t_tx")}
+- Destination / deposit address: ${v("t_to")}
+- Memo / Tag: ${v("t_memo")}
+- Time of transfer: ${v("t_time")}
+${enEnd}Could you please confirm whether it can be recovered or credited, and the expected time and fee? Thank you!`;
+  $("t_out").value = zh + "\n\n———— English ————\n" + en;
+}
+
+let TIP_ON = false;
+function setupTip(){
+  const a = TIP_ADDRESS;
+  const problem = tipAddressProblem(a);
+  if (problem) { if (a) console.error("TIP_ADDRESS 未通过自检，打赏区保持隐藏：" + problem); return; }
+  TIP_ON = true;
+  $("tip").classList.add("on");
+  $("navTip").style.display = "";
+  $("tipChunks").replaceWith(chunksEl(a));
+  const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+  for (const n of [1, 3, 5]) $("tip" + n).href = `ethereum:${USDC_BASE}@8453/transfer?address=${a}&uint256=${n * 1000000}`;
+  $("tipCopy").addEventListener("click", () => copyText(a));
+  // 用本工具自己检查打赏地址：填进 ①，网络选 Base，收款方选「别人 / 商家」
+  $("tipCheck").addEventListener("click", () => {
+    $("addr").value = a; $("net").value = "base";
+    const r = document.querySelector('input[name="recip"][value="other"]'); if (r) r.checked = true;
+    updateCheck();
+    if (typeof location !== "undefined") location.hash = "#check";
+  });
+  let alt = 0;
+  for (const [addr, fam, wrap, chunks, copy] of [[TIP_SOL, "sol", "tipSolWrap", "tipSolChunks", "tipSolCopy"], [TIP_BTC, "btc", "tipBtcWrap", "tipBtcChunks", "tipBtcCopy"]]) {
+    const p = altTipProblem(addr, fam);
+    if (p) { if (addr) console.error(`备用打赏地址（${fam}）未通过自检，保持隐藏：` + p); continue; }
+    alt++;
+    $(wrap).style.display = "";
+    $(chunks).replaceWith(chunksEl(addr));
+    $(copy).addEventListener("click", () => copyText(addr));
+  }
+  if (alt) $("tipMore").style.display = "";
+}
+
+(function init(){
+  const sel = $("net");
+  for (const n of NETS) { const o = document.createElement("option"); o.value = n[0]; o.textContent = n[1]; sel.appendChild(o); }
+  ["addr","net","memo"].forEach(id => $(id).addEventListener("input", updateCheck));
+  $("net").addEventListener("change", updateCheck);
+  document.querySelectorAll('input[name="recip"]').forEach(r => r.addEventListener("change", updateCheck));
+  ["pa","pb"].forEach(id => $(id).addEventListener("input", updatePoison));
+  document.querySelectorAll("#checklist input").forEach(b => b.addEventListener("change", updateChecklist));
+  $("checkReset").addEventListener("click", () => { document.querySelectorAll("#checklist input").forEach(b => b.checked = false); updateChecklist(); });
+  document.querySelectorAll("#ticket input, #ticket select").forEach(el => { el.addEventListener("input", updateTicket); el.addEventListener("change", updateTicket); });
+  $("t_copy").addEventListener("click", () => copyText($("t_out").value));
+  $("shareCopy").addEventListener("click", () => copyText($("shareText").value));
+  updateTicket(); setupTip();
+  if (REPO_URL) { const a = document.createElement("a"); a.href = REPO_URL; a.textContent = " · 源码"; a.rel = "noopener"; $("repoLink").appendChild(a); }
+})();
+</script>
+</body>
+</html>

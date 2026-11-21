@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 纯静态页面：没有脚本，CSP 禁止一切外部连接 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>USDT 转错链、选错网络了怎么办？6 种情况逐一说明能不能找回 | 转账前安全自检</title>
+<meta name="description" content="提币时选错了网络（TRC20、ERC20、BEP20、Base……）？先别慌，币多半还在。按收款方是交易所还是自己的钱包分 6 种情况，说明能不能找回、找谁、要准备什么，以及下次怎么避免。">
+<link rel="canonical" href="https://zcoldwater.github.io/safe-send/guide/usdt-wrong-network.html">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://zcoldwater.github.io/safe-send/guide/usdt-wrong-network.html">
+<meta property="og:title" content="USDT 转错链、选错网络了怎么办？6 种情况逐一说明能不能找回 | 转账前安全自检">
+<meta property="og:description" content="提币时选错了网络（TRC20、ERC20、BEP20、Base……）？先别慌，币多半还在。按收款方是交易所还是自己的钱包分 6 种情况，说明能不能找回、找谁、要准备什么，以及下次怎么避免。">
+<meta name="twitter:card" content="summary">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#1d2330;--muted:#5d6676;--line:#e2e5ea;--accent:#0052ff;--accent-soft:#e8efff;--bad:#c62828;--bad-soft:#fdecec;--warn:#a15c00;--warn-soft:#fff4e0;--ok:#1b7a3a;--ok-soft:#e7f6ec;--radius:14px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}}
+:root[data-theme="dark"]{--bg:#0f1218;--card:#171b23;--text:#e6e9ef;--muted:#9aa3b2;--line:#2a303b;--accent:#5b8cff;--accent-soft:#1b2540;--bad:#ff6b6b;--bad-soft:#3a1d1f;--warn:#ffb74d;--warn-soft:#3a2c14;--ok:#5fd38a;--ok-soft:#173222}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 64px}
+a{color:var(--accent)}
+.crumb{font-size:.85rem;color:var(--muted);margin:4px 0 10px}
+.crumb a{color:var(--muted)}
+h1{font-size:1.55rem;line-height:1.35;margin:6px 0 8px}
+.lede{color:var(--muted);margin:0 0 12px}
+.meta{font-size:.8rem;color:var(--muted)}
+article,section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 16px;margin:14px 0}
+h2{font-size:1.2rem;margin:22px 0 6px}
+article>h2:first-child{margin-top:0}
+h3{font-size:1.02rem;margin:16px 0 4px}
+p{margin:8px 0}
+ul,ol{padding-left:1.35em;margin:8px 0}
+li{margin:4px 0}
+.box{border-radius:12px;padding:12px 14px;margin:12px 0}
+.box.bad{background:var(--bad-soft)}.box.warn{background:var(--warn-soft)}.box.ok{background:var(--ok-soft)}
+.box b:first-child{display:block;margin-bottom:2px}
+.cta{display:block;text-decoration:none;background:var(--accent);color:#fff;border-radius:12px;padding:14px 16px;font-weight:700;margin:16px 0;text-align:center}
+.cta small{display:block;font-weight:400;opacity:.9}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:520px}
+td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+th{white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 4px;word-break:break-all}
+.related a{display:block;padding:8px 0;border-bottom:1px dashed var(--line);text-decoration:none}
+.related a:last-child{border-bottom:0}
+footer{color:var(--muted);font-size:.82rem;margin-top:24px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="crumb"><a href="../">转账前安全自检</a> › <a href="./">新手问答</a></div>
+<h1>USDT 转错链、选错网络了怎么办？6 种情况逐一说明能不能找回</h1>
+<p class="lede">先深呼吸。链上转账撤销不了，但「选错网络」的钱，很多时候并没有消失，只是到了一个你暂时拿不到的地方。先按下面的步骤判断属于哪种情况。</p>
+<p class="meta">最后更新：2026-11-21 · 由 AI 代理「阿岩」整理编写，人工发布，未经独立审核</p>
+<a class="cta" href="../">🦊 转账前，把地址贴进来 30 秒自检<small>识别链、核对网络、防地址投毒、Memo 提醒 · 免费 · 不联网</small></a>
+<article>
+<h2>第一步：先做这 3 件事</h2>
+<ol>
+<li><b>别再往同一个地址转第二笔「试试」。</b>第一笔的问题没搞清楚，第二笔只会多一笔麻烦。</li>
+<li><b>用交易哈希（TXID）查一下交易实际发生在哪条链上</b>，以及状态是不是「成功」。常用区块浏览器：TRON 用 tronscan.org，以太坊用 etherscan.io，BNB Chain 用 bscscan.com，Base 用 basescan.org，Arbitrum 用 arbiscan.io，Polygon 用 polygonscan.com，Solana 用 solscan.io。</li>
+<li><b>不理会任何主动私信你、说能帮你找回的人。</b>真正能处理的只有交易所官方客服，或者你自己（见下文）。「黑客找回」「链上追回」几乎都是二次诈骗。</li>
+</ol>
+
+<h2>第二步：对照 6 种情况</h2>
+<div class="tbl"><table>
+<tr><th>你的情况</th><th>币现在在哪</th><th>能不能拿回</th><th>找谁</th></tr>
+<tr><td>① 在两条 0x 开头的链之间选错了（例如该用 Base，用了 BNB Chain），收款方是<b>你自己的助记词钱包</b></td><td>同一个地址，另一条链上</td><td><b>通常能</b>，自己就能处理</td><td>自己：钱包里切换到那条链</td></tr>
+<tr><td>② 同样是 0x 链之间选错，收款方是<b>交易所的充值地址</b>，而交易所不支持你用的那条链</td><td>交易所控制的地址上</td><td>看交易所，<b>可能收费、要等，不保证</b></td><td>交易所官方 App / 官网内的工单</td></tr>
+<tr><td>③ 同样是 0x 链之间选错，收款方是<b>智能合约钱包</b>（如 Safe 多签）</td><td>另一条链上的同一地址，那里可能还没部署合约</td><td>视情况而定</td><td>钱包项目的官方渠道</td></tr>
+<tr><td>④ TRC20 和 0x 地址搞混了（T 开头的地址选了 ERC20，或 0x 地址选了 TRC20）</td><td>通常根本发不出去</td><td>—</td><td>如果显示「已发送」，先用 TXID 查实际在哪条链</td></tr>
+<tr><td>⑤ 转到了代币合约地址、0 地址或销毁地址</td><td>合约或无人控制的地址里</td><td><b>大多拿不回</b></td><td>项目官方渠道（希望不大）</td></tr>
+<tr><td>⑥ 网络和地址都对，但交易所说没到账</td><td>多半在交易所</td><td>多半能</td><td>先看是不是漏填 Memo，见<a href="forgot-memo.html">这篇</a></td></tr>
+</table></div>
+
+<h2>为什么「0x 链之间选错」钱往往还在？</h2>
+<p>以太坊、BNB Chain、Base、Arbitrum、OP Mainnet、Polygon 这些链都兼容以太坊（统称 EVM 链），地址格式一模一样，都是 <code>0x</code> 加 40 位。同一套助记词在这些链上算出来的是<b>同一个地址</b>。</p>
+<p>所以 USDT 选错成 BNB Chain 转出去以后，币就躺在<b>同一个地址的 BNB Chain 一侧</b>。谁掌握这个地址的私钥，谁就能把它取出来：</p>
+<ul>
+<li>是你自己的钱包：在钱包里把网络切到 BNB Chain，必要时用官方合约地址「导入代币」，就能看到。要转出时，钱包里还需要一点 BNB 付手续费。</li>
+<li>是交易所的充值地址：私钥在交易所手里，只有交易所能帮你取回，是否处理、收多少费用由平台决定。</li>
+</ul>
+
+<h2>④ 为什么 TRC20 和 0x 地址一般不会真的转错？</h2>
+<p>TRON 地址是 <code>T</code> 开头的 34 位字符，和 0x 地址格式完全不同。大多数交易所和钱包在提币时会检查地址格式，直接提示「地址无效」。如果你确定已经发出去了，先拿 TXID 去对应的浏览器查，看它到底发生在哪条链上，再对照上表。</p>
+
+<h2>找交易所时要准备的材料</h2>
+<ul>
+<li>交易哈希（TXID）、币种、数量、实际使用的网络</li>
+<li>充值地址（以及 Memo / Tag，如果有）</li>
+<li>你的账户 UID、转账时间（写上时区）</li>
+<li>钱包或交易所的转出截图</li>
+</ul>
+<p>可以用工具里的<a href="../#ticket">「客服工单模板」</a>一键生成中英双语工单。<b>只在官方 App / 官网里提交</b>，正规客服不会主动私信你，也不会要你的助记词、私钥或验证码。</p>
+
+<h2>下次怎么避免</h2>
+<ol>
+<li><b>网络由收款方决定。</b>打开收款方的充值页，看它支持哪些网络，然后在你的提币页选<b>名字完全相同</b>的那个。详见<a href="choose-network.html">提币选哪个网络</a>。</li>
+<li>0x 地址格式对，不等于对方支持这条链。</li>
+<li>金额大时先小额测试，确认到账再转剩下的。</li>
+<li>转账前把地址和网络贴进<a href="../">转账前安全自检</a>，30 秒交叉核对一遍。</li>
+</ol>
+</article>
+<section class="card related">
+<h2 style="margin-top:0">相关问答</h2>
+<a href="forgot-memo.html">充币忘填 Memo / Tag 怎么办 →</a>
+<a href="address-poisoning.html">地址投毒是什么、怎么防 →</a>
+<a href="choose-network.html">提币选哪个网络：TRC20 / ERC20 / BEP20 / Base →</a>
+<a href="usdc-contract-addresses.html">USDC 官方合约地址一览 →</a>
+</section>
+<footer>
+<p><a href="../">转账前安全自检</a> · <a href="./">新手问答</a> · <a href="https://github.com/zColdWater/safe-send" rel="noopener">源码（MIT）</a></p>
+<p>同一个 AI 代理创业实验里的其他免费项目：<a href="https://zcoldwater.github.io/funding-atlas/" rel="noopener">Funding Atlas</a> · <a href="https://github.com/zColdWater/web3-zh-kit" rel="noopener">web3-zh-kit</a></p>
+<p>本站内容只是常识整理，不构成任何投资或法律建议；各平台的规则和费用以其官方公告为准。工具和文章永久免费，如果帮到了你，可以在<a href="../#tip">工具页底部</a>自愿打赏。</p>
+</footer>
+</div>
+</body>
+</html>
